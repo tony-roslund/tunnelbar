@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1200, height=630" />
+    <title>TunnelBar OG Image</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,500;14..32,600&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #f4f1e8;
+        --paper: #0c0d0b;
+        --line: #2a2b27;
+        --accent: #d8ff5f;
+        --muted: rgba(244, 241, 232, 0.66);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        margin: 0;
+        overflow: hidden;
+        background: var(--paper);
+      }
+
+      body {
+        display: grid;
+        place-items: stretch;
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+
+      .frame {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        padding: 58px 64px;
+        background:
+          radial-gradient(circle at 48% 2%, rgba(216, 255, 95, 0.19), transparent 38%),
+          linear-gradient(rgba(244, 241, 232, 0.038) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(244, 241, 232, 0.038) 1px, transparent 1px),
+          var(--paper);
+        background-size: auto, 48px 48px, 48px 48px, auto;
+      }
+
+      .frame::after {
+        position: absolute;
+        inset: 0;
+        content: "";
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 54%);
+        pointer-events: none;
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 48px;
+        height: 100%;
+        align-items: center;
+      }
+
+      .left {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 4px 0 10px;
+      }
+
+      .wordmark {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 8px;
+        border-radius: 8px;
+        background: var(--accent);
+        padding: 9px 12px;
+        color: var(--paper);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 19px;
+        font-weight: 600;
+      }
+
+      .terminal {
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(244, 241, 232, 0.045);
+        padding: 8px 13px;
+        color: rgba(244, 241, 232, 0.74);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 18px;
+        font-weight: 500;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      h1 {
+        max-width: 540px;
+        margin: 0;
+        color: var(--ink);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 72px;
+        font-weight: 600;
+        letter-spacing: 0;
+        line-height: 0.94;
+      }
+
+      p {
+        max-width: 520px;
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-size: 24px;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+
+      .chips {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        width: 520px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: rgba(0, 0, 0, 0.22);
+        padding: 14px 15px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 18px;
+        font-weight: 500;
+        color: rgba(244, 241, 232, 0.68);
+      }
+
+      .chip span {
+        color: var(--accent);
+      }
+
+      .window {
+        overflow: hidden;
+        border: 1px solid rgba(244, 241, 232, 0.16);
+        border-radius: 18px;
+        background: #171816;
+        box-shadow: 0 36px 90px rgba(0, 0, 0, 0.55);
+        outline: 1px solid rgba(255, 255, 255, 0.08);
+        outline-offset: -1px;
+      }
+
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: #20211e;
+        padding: 16px 18px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 18px;
+        font-weight: 500;
+        color: rgba(244, 241, 232, 0.7);
+      }
+
+      .lights {
+        display: flex;
+        gap: 9px;
+      }
+
+      .light {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+      }
+
+      .red {
+        background: #ff5f57;
+      }
+
+      .yellow {
+        background: #ffbd2e;
+      }
+
+      .green {
+        background: #28c840;
+      }
+
+      .menu {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .menu strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .body {
+        padding: 42px 48px 48px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 45%), #10110f;
+      }
+
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        background: rgba(13, 14, 12, 0.96);
+        padding: 26px;
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.62);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 26px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .active {
+        margin-top: 4px;
+        color: var(--accent);
+      }
+
+      .label {
+        margin-bottom: 11px;
+        color: rgba(244, 241, 232, 0.52);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .input,
+      .public {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 18px 19px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 22px;
+        font-weight: 500;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin: 20px 0 24px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 8px;
+        padding: 14px 18px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .start {
+        background: var(--accent);
+        color: var(--paper);
+      }
+
+      .stop {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(244, 241, 232, 0.78);
+      }
+
+      .public {
+        border-color: rgba(216, 255, 95, 0.28);
+        background: rgba(216, 255, 95, 0.08);
+      }
+
+      .public .label {
+        color: var(--accent);
+      }
+
+      .url {
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="content">
+        <section class="left">
+          <div class="wordmark"><span class="terminal">&gt;_</span> tunnelbar</div>
+          <div>
+            <div class="eyebrow"><span class="dot"></span>native macOS tunnels</div>
+            <h1>Localhost, shipped to a URL.</h1>
+            <p>Paste a localhost URL. Start a temporary public tunnel. Copy the routed link.</p>
+          </div>
+          <div class="chips">
+            <div class="chip"><span>~/</span>paste</div>
+            <div class="chip"><span>~/</span>expose</div>
+            <div class="chip"><span>~/</span>copy</div>
+            <div class="chip"><span>~/</span>stop</div>
+          </div>
+        </section>
+
+        <section class="window">
+          <div class="bar">
+            <div class="lights">
+              <span class="light red"></span>
+              <span class="light yellow"></span>
+              <span class="light green"></span>
+            </div>
+            <div class="menu"><span>Sun 10:55 AM</span><strong>☰ TunnelBar</strong></div>
+          </div>
+          <div class="body">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div>TunnelBar</div>
+                  <div class="active">Active</div>
+                </div>
+                <span class="dot"></span>
+              </div>
+              <div class="label">LOCAL URL</div>
+              <div class="input">http://localhost:3000</div>
+              <div class="actions">
+                <div class="button start">▷ Start</div>
+                <div class="button stop">▢ Stop</div>
+              </div>
+              <div class="public">
+                <div class="label">PUBLIC URL</div>
+                <div class="url">https://demo-tunnel.example</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

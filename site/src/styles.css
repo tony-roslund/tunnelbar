@@ -1,0 +1,239 @@
+@import url("https://api.fontshare.com/v2/css?f[]=chillax@500,600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Chillax", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", "SF Mono", Consolas, monospace;
+  --color-ink: #f4f1e8;
+  --color-paper: #0c0d0b;
+  --color-line: #2a2b27;
+  --color-accent: #d8ff5f;
+  --color-ember: #ff7a4f;
+  --color-cyanic: #77e0ff;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+.brand-terminal-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  line-height: 1;
+}
+
+.brand-terminal-cursor {
+  display: inline-block;
+  width: 0.58em;
+  height: 1.08em;
+  background: var(--color-accent);
+  transform: translateY(0.04em);
+  animation: brand-cursor-blink 900ms step-end infinite;
+}
+
+.typewriter-url {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding-right: 0.14em;
+  border-right: 2px solid var(--color-accent);
+  animation:
+    type-local-url 5.3s steps(21, end) infinite,
+    type-caret 900ms step-end infinite;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.public-url-reveal {
+  animation: reveal-public-card 5.3s ease-out infinite;
+  transform-origin: left center;
+}
+
+.public-url-text {
+  animation: reveal-public-text 5.3s ease-out infinite;
+}
+
+.cursor-click-demo {
+  position: absolute;
+  left: 13rem;
+  top: -2.25rem;
+  color: var(--color-ink);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0) rotate(-8deg);
+  animation: cursor-click-start 5.3s ease-in-out infinite;
+}
+
+.start-button-pulse {
+  animation: start-button-click 5.3s ease-in-out infinite;
+}
+
+@keyframes type-local-url {
+  0%,
+  4% {
+    width: 0;
+  }
+
+  34%,
+  96% {
+    width: 21.5ch;
+  }
+
+  98%,
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes brand-cursor-blink {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes type-caret {
+  0%,
+  100% {
+    border-color: transparent;
+  }
+
+  50% {
+    border-color: var(--color-accent);
+  }
+}
+
+@keyframes reveal-public-card {
+  0%,
+  48% {
+    opacity: 0.44;
+    transform: translateY(0.5rem);
+  }
+
+  60%,
+  96% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  98%,
+  100% {
+    opacity: 0.44;
+    transform: translateY(0.5rem);
+  }
+}
+
+@keyframes reveal-public-text {
+  0%,
+  52% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+
+  68%,
+  96% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+
+  98%,
+  100% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+}
+
+@keyframes cursor-click-start {
+  0%,
+  34% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-8deg) scale(1);
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  48% {
+    opacity: 1;
+    transform: translate3d(-9rem, 3.85rem, 0) rotate(-8deg) scale(1);
+  }
+
+  52% {
+    opacity: 1;
+    transform: translate3d(-9rem, 3.85rem, 0) rotate(-8deg) scale(0.88);
+  }
+
+  56% {
+    opacity: 0;
+    transform: translate3d(-9rem, 3.85rem, 0) rotate(-8deg) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(-9rem, 3.85rem, 0) rotate(-8deg) scale(1);
+  }
+}
+
+@keyframes start-button-click {
+  0%,
+  48%,
+  56%,
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+
+  52% {
+    filter: brightness(1.12);
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typewriter-url,
+  .brand-terminal-cursor,
+  .public-url-reveal,
+  .public-url-text,
+  .cursor-click-demo,
+  .start-button-pulse {
+    animation: none;
+  }
+
+  .typewriter-url {
+    width: auto;
+    border-right: 0;
+  }
+
+  .brand-terminal-cursor {
+    opacity: 1;
+  }
+
+  .public-url-reveal,
+  .public-url-text {
+    opacity: 1;
+    transform: none;
+    clip-path: none;
+  }
+
+  .cursor-click-demo {
+    display: none;
+  }
+}
