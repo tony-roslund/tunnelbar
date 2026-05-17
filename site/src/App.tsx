@@ -1,7 +1,6 @@
 import {
   Check,
   Copy,
-  Globe2,
   History,
   Link2,
   Menu,
@@ -93,9 +92,6 @@ export default function App() {
           </a>
           <a className="hover:text-ink" href="#details">
             details
-          </a>
-          <a className="hover:text-ink" href="#status">
-            status
           </a>
         </nav>
       </header>
@@ -324,24 +320,11 @@ export default function App() {
         </div>
       </section>
 
-      <section id="status" className="border-t border-line">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="font-mono text-base text-accent sm:text-sm">v0 in progress</p>
-            <h2 className="mt-3 max-w-[18ch] text-balance font-heading text-3xl font-semibold text-ink sm:text-4xl">
-              Built native first. Landing page now live-path ready.
-            </h2>
-          </div>
-          <div className="grid gap-3 font-mono text-base text-ink/66 sm:text-sm">
-            <div className="flex items-center gap-3">
-              <Globe2 className="size-4 text-accent" aria-hidden="true" />
-              tunnelbar.dev
-            </div>
-            <div className="flex items-center gap-3">
-              <Terminal className="size-4 text-accent" aria-hidden="true" />
-              macOS 14+ target
-            </div>
-          </div>
+      <section id="status" className="relative h-[clamp(8.75rem,20vw,17rem)] overflow-hidden border-t border-line">
+        <div className="mx-auto flex h-full max-w-7xl items-end px-5 sm:px-8">
+          <p className="status-wordmark translate-y-[10px] whitespace-nowrap font-mono font-semibold" aria-label="TunnelBar">
+            % tunnelbar
+          </p>
         </div>
       </section>
 

@@ -128,6 +128,22 @@ body {
   opacity: 1;
 }
 
+.status-wordmark {
+  font-size: clamp(4.35rem, 15.2vw, 13rem);
+  line-height: 0.78;
+  letter-spacing: 0;
+  background: linear-gradient(
+    180deg,
+    var(--color-accent) 0%,
+    var(--color-accent) 42%,
+    color-mix(in oklab, var(--color-accent) 42%, var(--color-paper)) 72%,
+    var(--color-paper) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 @keyframes type-local-url {
   0%,
   4% {
