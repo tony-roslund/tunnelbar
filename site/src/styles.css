@@ -81,6 +81,53 @@ body {
   animation: start-button-click 5.3s ease-in-out infinite;
 }
 
+.flow-glow-card {
+  --glow-x: 50%;
+  --glow-y: 50%;
+  position: relative;
+  isolation: isolate;
+}
+
+.flow-glow-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      300px circle at var(--glow-x) var(--glow-y),
+      color-mix(in oklab, var(--color-accent) 24%, transparent),
+      transparent 68%
+    );
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flow-glow-card:hover::before {
+  opacity: 1;
+}
+
+.flow-glow-card::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      170px circle at var(--glow-x) var(--glow-y),
+      color-mix(in oklab, white 10%, transparent),
+      transparent 72%
+    );
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flow-glow-card:hover::after {
+  opacity: 1;
+}
+
 @keyframes type-local-url {
   0%,
   4% {
@@ -234,6 +281,11 @@ body {
   }
 
   .cursor-click-demo {
+    display: none;
+  }
+
+  .flow-glow-card::before,
+  .flow-glow-card::after {
     display: none;
   }
 }

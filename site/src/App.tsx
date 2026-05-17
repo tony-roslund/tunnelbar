@@ -9,6 +9,7 @@ import {
   Square,
   Terminal,
 } from "lucide-react";
+import type { PointerEvent } from "react";
 
 const flowSteps = [
   {
@@ -64,6 +65,12 @@ function StatusDot({ tone = "accent" }: { tone?: "accent" | "ember" | "cyan" }) 
   }[tone];
 
   return <span className={`size-2 rounded-full ${color}`} aria-hidden="true" />;
+}
+
+function updateGlowPosition(event: PointerEvent<HTMLDivElement>) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty("--glow-x", `${event.clientX - rect.left}px`);
+  event.currentTarget.style.setProperty("--glow-y", `${event.clientY - rect.top}px`);
 }
 
 export default function App() {
@@ -196,16 +203,20 @@ export default function App() {
       <section id="flow" className="border-y border-line bg-ink/[0.025]">
         <div className="mx-auto grid max-w-7xl gap-4 px-5 py-16 sm:px-8 lg:grid-cols-3">
           {flowSteps.map((step, index) => (
-            <div key={step.title} className="min-w-0 overflow-hidden rounded-lg border border-line bg-paper/88 p-5">
-              <div className="mb-8 flex items-center justify-between font-mono text-base sm:text-sm">
+            <div
+              key={step.title}
+              className="flow-glow-card min-w-0 overflow-hidden rounded-lg border border-line bg-paper/88 p-5"
+              onPointerMove={updateGlowPosition}
+            >
+              <div className="relative z-10 mb-8 flex items-center justify-between font-mono text-base sm:text-sm">
                 <span className="text-ink/52">0{index + 1}</span>
                 <span className="rounded-full border border-line px-2 py-1 text-ink/62">{step.label}</span>
               </div>
-              <h2 className="max-w-[18ch] text-balance font-heading text-2xl font-semibold text-ink">
+              <h2 className="relative z-10 max-w-[18ch] text-balance font-heading text-2xl font-semibold text-ink">
                 {step.title}
               </h2>
-              <p className="mt-3 text-pretty text-base text-ink/64 sm:text-sm">{step.copy}</p>
-              <div className="mt-5 min-h-20 break-all rounded-md border border-line bg-black/35 p-3 font-mono text-base text-ink/72 sm:text-sm">
+              <p className="relative z-10 mt-3 text-pretty text-base text-ink/64 sm:text-sm">{step.copy}</p>
+              <div className="relative z-20 mt-5 min-h-20 break-all rounded-md border border-line bg-[#070806] p-3 font-mono text-base text-ink/72 sm:text-sm">
                 {step.code}
               </div>
             </div>
