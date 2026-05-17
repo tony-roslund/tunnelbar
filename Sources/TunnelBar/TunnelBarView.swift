@@ -5,9 +5,12 @@ struct TunnelBarView: View {
     @ObservedObject var historyStore: HistoryStore
 
     @State private var localURL = "http://localhost:3000"
+    @State private var showDiagnostics = false
+
+    private let accent = Color(red: 0.85, green: 1.0, blue: 0.37)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             header
             inputSection
             activeSection
@@ -16,33 +19,57 @@ struct TunnelBarView: View {
             footer
         }
         .padding(18)
-        .frame(width: 360)
+        .frame(width: 420)
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("TunnelBar")
-                    .font(.title2.weight(.semibold))
-                Text(tunnelManager.state.label)
-                    .font(.caption)
-                    .foregroundStyle(statusColor)
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("% tunnelbar")
+                    .font(.system(.title3, design: .monospaced).weight(.semibold))
+
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
+
+                    Text(tunnelManager.state.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(statusColor)
+                }
             }
 
             Spacer()
 
-            Circle()
-                .fill(statusColor)
-                .frame(width: 10, height: 10)
+            if tunnelManager.tunnels.contains(where: { $0.canStop }) {
+                Button {
+                    tunnelManager.stopAll()
+                } label: {
+                    Label("Stop All", systemImage: "stop.fill")
+                }
+                .controlSize(.small)
+            }
         }
     }
 
     private var inputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("http://localhost:3000/path", text: $localURL)
-                .textFieldStyle(.roundedBorder)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Local URL")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
 
-            HStack {
+            HStack(spacing: 10) {
+                TextField("http://localhost:3000", text: $localURL)
+                    .font(.system(.body, design: .monospaced))
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 9)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(nsColor: .textBackgroundColor))
+                            .stroke(Color(nsColor: .separatorColor))
+                    )
+
                 Button {
                     tunnelManager.start(rawLocalURL: localURL) { localURL, publicURL in
                         historyStore.add(localURL: localURL, publicURL: publicURL)
@@ -50,16 +77,13 @@ struct TunnelBarView: View {
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
-                .disabled(tunnelManager.state == .starting)
+                .buttonStyle(.borderedProminent)
+                .tint(accent)
+                .disabled(localURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
 
-                Button {
-                    tunnelManager.stopAll()
-                } label: {
-                    Label("Stop All", systemImage: "stop.fill")
-                }
-                .disabled(!tunnelManager.tunnels.contains(where: { $0.canStop }))
-
-                Spacer()
+            if let message = tunnelManager.lastError, !hasVisibleFailedTunnel {
+                MessagePanel(title: "Could not create tunnel", message: message)
             }
         }
     }
@@ -67,86 +91,25 @@ struct TunnelBarView: View {
     @ViewBuilder
     private var activeSection: some View {
         if !tunnelManager.tunnels.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Tunnels")
                     .font(.headline)
 
                 ForEach(tunnelManager.tunnels) { tunnel in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(tunnel.state.label)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(color(for: tunnel.state))
-
-                            Spacer()
-
-                            if tunnel.canStop {
-                                Button {
-                                    tunnelManager.stop(tunnel.id)
-                                } label: {
-                                    Label("Stop", systemImage: "stop.fill")
-                                }
-                                .labelStyle(.iconOnly)
-                                .help("Stop this tunnel")
-                            }
-                        }
-
-                        Text(tunnel.localURL)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .lineLimit(2)
-
-                        if let publicURL = tunnel.publicURL {
-                            Text(publicURL)
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                                .lineLimit(3)
-
-                            HStack {
-                                Button {
-                                    tunnelManager.copyPublicURL(for: tunnel.id)
-                                } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
-                                }
-
-                                if let url = tunnelManager.publicURL(for: tunnel.id) {
-                                    Link(destination: url) {
-                                        Label("Open", systemImage: "arrow.up.right")
-                                    }
-                                }
-                            }
-                        } else if case .failed(let message) = tunnel.state {
-                            Text(message)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("Exposing \(tunnel.origin)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(10)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    TunnelRow(
+                        tunnel: tunnel,
+                        statusColor: color(for: tunnel.state),
+                        onStop: { tunnelManager.stop(tunnel.id) },
+                        onCopy: { tunnelManager.copyPublicURL(for: tunnel.id) },
+                        publicURL: tunnelManager.publicURL(for: tunnel.id)
+                    )
                 }
             }
-        } else if let message = tunnelManager.lastError {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Could not create tunnel")
-                    .font(.headline)
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(12)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Recent")
                     .font(.headline)
@@ -167,51 +130,68 @@ struct TunnelBarView: View {
                 Text("No tunnel history yet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(sectionBackground)
             } else {
-                ForEach(historyStore.items.prefix(4)) { item in
-                    Button {
-                        localURL = item.localURL
-                        Clipboard.copy(item.publicURL)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.localURL)
-                                .lineLimit(1)
-                            Text(item.publicURL)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                VStack(spacing: 8) {
+                    ForEach(historyStore.items.prefix(4)) { item in
+                        Button {
+                            localURL = item.localURL
+                            Clipboard.copy(item.publicURL)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.localURL)
+                                    .font(.system(.caption, design: .monospaced).weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+
+                                Text(item.publicURL)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(sectionBackground)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
     }
 
     private var diagnosticsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Diagnostics")
-                .font(.headline)
-
+        DisclosureGroup(isExpanded: $showDiagnostics) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(tunnelManager.logs.enumerated()), id: \.offset) { _, line in
-                        Text(line)
-                            .font(.system(size: 11, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if tunnelManager.logs.isEmpty {
+                        Text("No diagnostics yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(tunnelManager.logs.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
+                .font(.system(size: 11, design: .monospaced))
+                .textSelection(.enabled)
             }
             .frame(height: 120)
-            .padding(8)
+            .padding(10)
             .background(Color(nsColor: .textBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
+        } label: {
+            Text("Diagnostics")
+                .font(.headline)
         }
     }
 
     private var footer: some View {
         HStack {
-            Text("Quick tunnel URLs are public while running.")
+            Text("Temporary tunnel URLs are public while running.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -224,10 +204,26 @@ struct TunnelBarView: View {
         }
     }
 
+    private var sectionBackground: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color(nsColor: .controlBackgroundColor))
+            .stroke(Color(nsColor: .separatorColor).opacity(0.7))
+    }
+
+    private var hasVisibleFailedTunnel: Bool {
+        tunnelManager.tunnels.contains { tunnel in
+            if case .failed = tunnel.state {
+                return true
+            }
+
+            return false
+        }
+    }
+
     private var statusColor: Color {
         switch tunnelManager.state {
         case .active:
-            .green
+            accent
         case .starting, .stopping:
             .orange
         case .failed:
@@ -240,7 +236,7 @@ struct TunnelBarView: View {
     private func color(for state: TunnelState) -> Color {
         switch state {
         case .active:
-            .green
+            accent
         case .starting, .stopping:
             .orange
         case .failed:
@@ -248,5 +244,125 @@ struct TunnelBarView: View {
         case .idle, .stopped:
             .secondary
         }
+    }
+}
+
+private struct TunnelRow: View {
+    let tunnel: ActiveTunnel
+    let statusColor: Color
+    let onStop: () -> Void
+    let onCopy: () -> Void
+    let publicURL: URL?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label(tunnel.state.label, systemImage: statusIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(statusColor)
+
+                Spacer()
+
+                if tunnel.canStop {
+                    Button(action: onStop) {
+                        Image(systemName: "stop.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Stop this tunnel")
+                }
+            }
+
+            URLLine(label: "local", value: tunnel.localURL)
+
+            if let publicString = tunnel.publicURL {
+                URLLine(label: "public", value: publicString)
+
+                HStack {
+                    Button(action: onCopy) {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+
+                    if let publicURL {
+                        Link(destination: publicURL) {
+                            Label("Open", systemImage: "arrow.up.right")
+                        }
+                    }
+                }
+                .controlSize(.small)
+            } else if case .failed(let message) = tunnel.state {
+                MessagePanel(title: "Tunnel failed", message: message)
+            } else {
+                Text("Exposing \(tunnel.origin)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 9)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .stroke(Color(nsColor: .separatorColor).opacity(0.75))
+        )
+    }
+
+    private var statusIcon: String {
+        switch tunnel.state {
+        case .active:
+            "link"
+        case .starting:
+            "arrow.triangle.2.circlepath"
+        case .stopping, .stopped:
+            "stop.circle"
+        case .failed:
+            "exclamationmark.triangle"
+        case .idle:
+            "circle"
+        }
+    }
+}
+
+private struct URLLine: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label)
+                .font(.system(.caption, design: .monospaced).weight(.semibold))
+                .foregroundStyle(Color(red: 0.85, green: 1.0, blue: 0.37))
+                .frame(width: 42, alignment: .leading)
+
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct MessagePanel: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.red)
+
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.red.opacity(0.08))
+                .stroke(Color.red.opacity(0.22))
+        )
     }
 }

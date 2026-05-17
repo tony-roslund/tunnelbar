@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 360, height: 520)
+        popover.contentSize = NSSize(width: 420, height: 620)
         popover.contentViewController = NSHostingController(rootView: contentView)
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
