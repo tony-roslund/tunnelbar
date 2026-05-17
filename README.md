@@ -12,6 +12,7 @@ TunnelBar is a native macOS menu bar app for creating temporary public URLs for 
 - Clipboard copy, stop control, diagnostics log, and local recent history.
 - Bundled Apple Silicon and Intel `cloudflared` binaries with checksum verification.
 - `localhost` inputs are tunneled through `127.0.0.1` internally to avoid macOS IPv4/IPv6 port collisions while preserving the original URL for display and route composition.
+- Common startup failures are translated into user-facing messages while raw `cloudflared` output remains available in Diagnostics.
 
 ## Run Locally
 
@@ -36,6 +37,36 @@ scripts/package-app.sh
 ```
 
 Packaging verifies the vendored `cloudflared` checksums before creating `.build/TunnelBar.app`.
+
+## Release Build
+
+```sh
+scripts/release-build.sh
+```
+
+By default this packages the app and creates `.build/TunnelBar-0.1.0.dmg`. It skips signing and notarization unless credentials are configured.
+
+For a Developer ID release:
+
+```sh
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/release-build.sh
+```
+
+For notarization, either set a stored notarytool profile:
+
+```sh
+NOTARYTOOL_PROFILE="tunnelbar" SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/release-build.sh
+```
+
+Or set `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`.
+
+Individual release steps are also available:
+
+```sh
+scripts/sign-app.sh
+scripts/create-dmg.sh
+scripts/notarize-dmg.sh
+```
 
 ## Test
 

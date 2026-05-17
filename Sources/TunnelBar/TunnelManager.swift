@@ -213,7 +213,9 @@ final class TunnelManager: ObservableObject {
         mapping: LocalURLMapping,
         onStarted: @escaping @MainActor @Sendable (String, String) -> Void
     ) {
-        appendLog(text.trimmingCharacters(in: .newlines))
+        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        appendLog(cleanText)
+        contexts[tunnelID]?.recordOutput(cleanText)
 
         guard
             contexts[tunnelID] != nil,
@@ -246,16 +248,25 @@ final class TunnelManager: ObservableObject {
         let wasStopping = tunnel.state == .stopping
         let wasStarting = tunnel.state == .starting
         let wasActive = tunnel.state == .active
+        let alreadyFailed = failedMessage(for: tunnel) != nil
+        let context = contexts[tunnelID]
 
         cleanupContext(tunnelID)
 
-        if wasStopping || status == 0 || wasActive {
+        if alreadyFailed {
+            appendLog("cloudflared exited with status \(status)")
+        } else if wasStopping || status == 0 || wasActive {
             updateTunnel(tunnelID) { tunnel in
                 tunnel.state = .stopped
             }
             appendLog("Tunnel stopped for \(tunnel.origin)")
         } else if wasStarting {
-            markTunnel(tunnelID, failed: "cloudflared exited before creating a public URL.")
+            let message = CloudflaredFailureClassifier.message(
+                outputLines: context?.outputLines ?? [],
+                mapping: tunnelMapping(from: tunnel),
+                fallback: "cloudflared exited before creating a public URL."
+            )
+            markTunnel(tunnelID, failed: message)
             appendLog("cloudflared exited with status \(status) before creating a public URL")
         } else {
             markTunnel(tunnelID, failed: "cloudflared exited with status \(status).")
@@ -282,7 +293,13 @@ final class TunnelManager: ObservableObject {
                     return
                 }
 
-                self.markTunnel(tunnelID, failed: "Timed out waiting for a trycloudflare.com URL.")
+                let tunnel = self.tunnels.first(where: { $0.id == tunnelID })
+                let message = CloudflaredFailureClassifier.message(
+                    outputLines: self.contexts[tunnelID]?.outputLines ?? [],
+                    mapping: tunnel.flatMap(self.tunnelMapping(from:)),
+                    fallback: "Timed out waiting for a tunnel URL. Check that the local server is still running, then try again."
+                )
+                self.markTunnel(tunnelID, failed: message)
                 self.appendLog("Timed out waiting for cloudflared to report a quick tunnel URL")
                 self.contexts[tunnelID]?.process.terminate()
                 self.updateAggregateState()
@@ -379,6 +396,10 @@ final class TunnelManager: ObservableObject {
             logs.removeFirst(logs.count - 200)
         }
     }
+
+    private func tunnelMapping(from tunnel: ActiveTunnel) -> LocalURLMapping? {
+        try? LocalURLParser.parse(tunnel.localURL)
+    }
 }
 
 private final class TunnelProcessContext {
@@ -388,6 +409,7 @@ private final class TunnelProcessContext {
     let outputPipe: Pipe
     let errorPipe: Pipe
     var startupTask: Task<Void, Never>?
+    var outputLines: [String] = []
 
     init(
         id: UUID,
@@ -401,6 +423,52 @@ private final class TunnelProcessContext {
         self.process = process
         self.outputPipe = outputPipe
         self.errorPipe = errorPipe
+    }
+
+    func recordOutput(_ text: String) {
+        guard !text.isEmpty else {
+            return
+        }
+
+        outputLines.append(text)
+        if outputLines.count > 40 {
+            outputLines.removeFirst(outputLines.count - 40)
+        }
+    }
+}
+
+enum CloudflaredFailureClassifier {
+    static func message(
+        outputLines: [String],
+        mapping: LocalURLMapping?,
+        fallback: String
+    ) -> String {
+        let output = outputLines.joined(separator: "\n").lowercased()
+        let origin = mapping?.origin.absoluteString ?? "the local URL"
+
+        if output.contains("connection refused")
+            || output.contains("connect: connection refused")
+            || output.contains("failed to connect to origin")
+            || output.contains("unable to connect to the origin")
+            || output.contains("connection reset by peer") {
+            return "Nothing is responding at \(origin). Start your local dev server, then try again."
+        }
+
+        if output.contains("no route to host") || output.contains("network is unreachable") {
+            return "TunnelBar could not reach \(origin). Check the local server address and try again."
+        }
+
+        if output.contains("permission denied") {
+            return "cloudflared could not start because macOS denied permission. Check Diagnostics, then try again."
+        }
+
+        if output.contains("failed to request quick tunnel")
+            || output.contains("error creating quick tunnel")
+            || output.contains("could not create quick tunnel") {
+            return "cloudflared could not create a tunnel. Check Diagnostics, then try again."
+        }
+
+        return fallback
     }
 }
 
