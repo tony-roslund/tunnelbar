@@ -205,7 +205,7 @@ export default function App() {
               onPointerMove={updateGlowPosition}
             >
               <div className="relative z-10 mb-8 flex items-center justify-between font-mono text-base sm:text-sm">
-                <span className="text-ink/52">0{index + 1}</span>
+                <span className="text-accent">0{index + 1}</span>
                 <span className="rounded-full border border-line px-2 py-1 text-ink/62">{step.label}</span>
               </div>
               <h2 className="relative z-10 max-w-[18ch] text-balance font-heading text-2xl font-semibold text-ink">
