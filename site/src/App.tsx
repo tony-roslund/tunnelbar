@@ -315,7 +315,7 @@ export default function App() {
       </section>
 
       <section id="status" className="relative h-[clamp(8.75rem,20vw,17rem)] overflow-hidden border-t border-line">
-        <div className="mx-auto flex h-full max-w-7xl items-end px-5 sm:px-8">
+        <div className="flex h-full w-full items-end justify-center px-5 sm:px-8">
           <p className="status-wordmark translate-y-[10px] whitespace-nowrap font-mono font-semibold" aria-label="TunnelBar">
             % tunnelbar
           </p>
