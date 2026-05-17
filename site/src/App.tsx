@@ -86,11 +86,13 @@ export default function App() {
           </span>
         </a>
 
-        <nav className="hidden items-center gap-6 font-mono text-sm text-ink/62 sm:flex">
-          <a className="hover:text-ink" href="#flow">
+        <nav className="hidden items-center gap-6 font-mono text-sm sm:flex">
+          <a className="text-ink/62 hover:text-ink" href="#flow">
+            <span className="text-accent">~/</span>
             flow
           </a>
-          <a className="hover:text-ink" href="#details">
+          <a className="text-ink/62 hover:text-ink" href="#details">
+            <span className="text-accent">~/</span>
             details
           </a>
         </nav>
@@ -121,14 +123,6 @@ export default function App() {
             </a>
           </div>
 
-          <div className="grid max-w-xl grid-cols-2 gap-3 font-mono text-base sm:grid-cols-4 sm:text-sm">
-            {["paste", "expose", "copy", "stop"].map((item) => (
-              <div key={item} className="rounded-md border border-line bg-paper/78 p-3 text-ink/62">
-                <span className="text-accent">~/</span>
-                {item}
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="relative min-w-0">
