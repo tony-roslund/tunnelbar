@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 public enum TunnelState: Equatable, Sendable {
     case idle
@@ -49,6 +50,7 @@ final class TunnelManager: ObservableObject {
 
     private var contexts: [UUID: TunnelProcessContext] = [:]
     private let startupTimeoutSeconds: UInt64 = 25
+    private let localServerCheckTimeoutSeconds = 1.5
 
     func start(rawLocalURL: String, onStarted: @escaping @MainActor @Sendable (String, String) -> Void) {
         let mapping: LocalURLMapping
@@ -80,6 +82,42 @@ final class TunnelManager: ObservableObject {
         lastError = nil
         updateAggregateState()
 
+        let timeout = localServerCheckTimeoutSeconds
+        Task { [weak self] in
+            let isReachable = await LocalServerHealthCheck.canConnect(
+                to: mapping.tunnelOrigin,
+                timeoutSeconds: timeout
+            )
+
+            await MainActor.run {
+                guard
+                    let self,
+                    self.tunnels.first(where: { $0.id == tunnelID })?.state == .starting
+                else {
+                    return
+                }
+
+                guard isReachable else {
+                    let message = "Nothing is responding at \(mapping.origin.absoluteString). Start your local dev server, then try again."
+                    self.markTunnel(tunnelID, failed: message)
+                    self.appendLog("Local server preflight failed for \(mapping.origin.absoluteString)")
+                    return
+                }
+
+                self.launchCloudflared(
+                    tunnelID: tunnelID,
+                    mapping: mapping,
+                    onStarted: onStarted
+                )
+            }
+        }
+    }
+
+    private func launchCloudflared(
+        tunnelID: UUID,
+        mapping: LocalURLMapping,
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void
+    ) {
         do {
             let executableURL = try CloudflaredLocator.executableURL()
             let process = Process()
@@ -469,6 +507,77 @@ enum CloudflaredFailureClassifier {
         }
 
         return fallback
+    }
+}
+
+enum LocalServerHealthCheck {
+    static func canConnect(to url: URL, timeoutSeconds: TimeInterval) async -> Bool {
+        guard
+            let host = url.host(),
+            let port = url.port,
+            let nwPort = NWEndpoint.Port(rawValue: UInt16(port))
+        else {
+            return false
+        }
+
+        let connection = NWConnection(
+            host: NWEndpoint.Host(host),
+            port: nwPort,
+            using: .tcp
+        )
+
+        return await withCheckedContinuation { continuation in
+            let gate = LocalServerHealthCheckGate(
+                connection: connection,
+                continuation: continuation
+            )
+
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    gate.finish(true)
+                case .failed, .waiting:
+                    gate.finish(false)
+                case .cancelled:
+                    gate.finish(false)
+                default:
+                    break
+                }
+            }
+
+            connection.start(queue: .global(qos: .userInitiated))
+
+            Task {
+                try? await Task.sleep(for: .seconds(timeoutSeconds))
+                gate.finish(false)
+            }
+        }
+    }
+}
+
+private final class LocalServerHealthCheckGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+    private let connection: NWConnection
+    private let continuation: CheckedContinuation<Bool, Never>
+
+    init(connection: NWConnection, continuation: CheckedContinuation<Bool, Never>) {
+        self.connection = connection
+        self.continuation = continuation
+    }
+
+    func finish(_ result: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !didResume else {
+            return
+        }
+
+        didResume = true
+        connection.stateUpdateHandler = nil
+        connection.cancel()
+        continuation.resume(returning: result)
     }
 }
 
