@@ -1,13 +1,15 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @main
 struct TunnelBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    private let settings = AppSettings.shared
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView(settings: settings)
         }
     }
 }
@@ -16,15 +18,23 @@ struct TunnelBarApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
-    private let tunnelManager = TunnelManager()
+    private let settings = AppSettings.shared
+    private lazy var tunnelManager = TunnelManager(settings: settings)
     private let historyStore = HistoryStore()
+    private var settingsCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        applyActivationPolicy(showDockIcon: settings.showDockIcon)
+        settingsCancellable = settings.$showDockIcon
+            .removeDuplicates()
+            .sink { [weak self] showDockIcon in
+                self?.applyActivationPolicy(showDockIcon: showDockIcon)
+            }
 
         let contentView = TunnelBarView(
             tunnelManager: tunnelManager,
-            historyStore: historyStore
+            historyStore: historyStore,
+            settings: settings
         )
 
         popover.behavior = .transient
@@ -57,5 +67,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    private func applyActivationPolicy(showDockIcon: Bool) {
+        NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
     }
 }

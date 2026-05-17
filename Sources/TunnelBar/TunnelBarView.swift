@@ -3,11 +3,24 @@ import SwiftUI
 struct TunnelBarView: View {
     @ObservedObject var tunnelManager: TunnelManager
     @ObservedObject var historyStore: HistoryStore
+    @ObservedObject var settings: AppSettings
 
     @State private var localURL = "http://localhost:3000"
-    @State private var showDiagnostics = false
+    @State private var showDiagnostics: Bool
+    @State private var showAbout = false
 
     private let accent = Color(red: 0.85, green: 1.0, blue: 0.37)
+
+    init(
+        tunnelManager: TunnelManager,
+        historyStore: HistoryStore,
+        settings: AppSettings
+    ) {
+        self.tunnelManager = tunnelManager
+        self.historyStore = historyStore
+        self.settings = settings
+        _showDiagnostics = State(initialValue: settings.openDiagnosticsByDefault)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -20,6 +33,9 @@ struct TunnelBarView: View {
         }
         .padding(18)
         .frame(width: 420)
+        .sheet(isPresented: $showAbout) {
+            AboutTunnelBarView()
+        }
     }
 
     private var header: some View {
@@ -197,6 +213,16 @@ struct TunnelBarView: View {
 
             Spacer()
 
+            SettingsLink {
+                Text("Settings")
+            }
+            .buttonStyle(.borderless)
+
+            Button("About") {
+                showAbout = true
+            }
+            .buttonStyle(.borderless)
+
             Button("Quit") {
                 NSApp.terminate(nil)
             }
@@ -244,6 +270,74 @@ struct TunnelBarView: View {
         case .idle, .stopped:
             .secondary
         }
+    }
+}
+
+private struct AboutTunnelBarView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 18) {
+            TunnelBarLogoView(size: 96)
+
+            VStack(spacing: 6) {
+                Text("TunnelBar")
+                    .font(.title2.weight(.semibold))
+
+                Text(versionText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 4) {
+                Text("Created 2026")
+                Text("Copyright © 2026 74Lab")
+                HStack(spacing: 0) {
+                    Text("Developed by ")
+                    Link("@tonyroslund", destination: URL(string: "https://x.com/tonyroslund")!)
+                    Text(" at 74Lab")
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+
+            Button("Done") {
+                dismiss()
+            }
+            .keyboardShortcut(.defaultAction)
+        }
+        .padding(28)
+        .frame(width: 320)
+    }
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+
+        return switch (version, build) {
+        case (.some(let version), .some(let build)):
+            "Version \(version) (\(build))"
+        case (.some(let version), .none):
+            "Version \(version)"
+        default:
+            "Version 0.1.0"
+        }
+    }
+}
+
+private struct TunnelBarLogoView: View {
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+                .fill(Color(red: 0.85, green: 1.0, blue: 0.37))
+
+            Text("%_")
+                .font(.system(size: size * 0.34, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Color(red: 0.047, green: 0.051, blue: 0.043))
+        }
+        .frame(width: size, height: size)
     }
 }
 

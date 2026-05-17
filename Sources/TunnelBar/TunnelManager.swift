@@ -49,8 +49,13 @@ final class TunnelManager: ObservableObject {
     @Published private(set) var logs: [String] = []
 
     private var contexts: [UUID: TunnelProcessContext] = [:]
+    private let settings: AppSettings
     private let startupTimeoutSeconds: UInt64 = 25
     private let localServerCheckTimeoutSeconds = 1.5
+
+    init(settings: AppSettings = .shared) {
+        self.settings = settings
+    }
 
     func start(rawLocalURL: String, onStarted: @escaping @MainActor @Sendable (String, String) -> Void) {
         let mapping: LocalURLMapping
@@ -271,8 +276,7 @@ final class TunnelManager: ObservableObject {
         }
         updateAggregateState()
         contexts[tunnelID]?.startupTask?.cancel()
-        Clipboard.copy(publicURL.absoluteString)
-        appendLog("Copied public URL: \(publicURL.absoluteString)")
+        copyIfEnabled(publicURL.absoluteString)
         onStarted(mapping.input.absoluteString, publicURL.absoluteString)
     }
 
@@ -367,9 +371,8 @@ final class TunnelManager: ObservableObject {
             tunnel.localURL = mapping.input.absoluteString
             tunnel.publicURL = publicURL.absoluteString
         }
-        Clipboard.copy(publicURL.absoluteString)
+        copyIfEnabled(publicURL.absoluteString)
         appendLog("Reused active tunnel for \(mapping.origin.absoluteString)")
-        appendLog("Copied public URL: \(publicURL.absoluteString)")
         onStarted(mapping.input.absoluteString, publicURL.absoluteString)
         return true
     }
@@ -437,6 +440,16 @@ final class TunnelManager: ObservableObject {
 
     private func tunnelMapping(from tunnel: ActiveTunnel) -> LocalURLMapping? {
         try? LocalURLParser.parse(tunnel.localURL)
+    }
+
+    private func copyIfEnabled(_ publicURL: String) {
+        guard settings.copyPublicURLAutomatically else {
+            appendLog("Public URL ready: \(publicURL)")
+            return
+        }
+
+        Clipboard.copy(publicURL)
+        appendLog("Copied public URL: \(publicURL)")
     }
 }
 
