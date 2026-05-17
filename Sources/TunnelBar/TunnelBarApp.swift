@@ -32,10 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = NSHostingController(rootView: contentView)
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(
-            systemSymbolName: "point.3.connected.trianglepath.dotted",
-            accessibilityDescription: "TunnelBar"
+        item.button?.image = nil
+        item.button?.attributedTitle = NSAttributedString(
+            string: "%_",
+            attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .semibold),
+            ]
         )
+        item.button?.toolTip = "TunnelBar"
         item.button?.target = self
         item.button?.action = #selector(togglePopover(_:))
         statusItem = item

@@ -7,9 +7,11 @@ let iconsetURL = assetsURL.appendingPathComponent("TunnelBarIcon.iconset", isDir
 let icnsURL = assetsURL.appendingPathComponent("TunnelBarIcon.icns")
 let publicIconURL = assetsURL.appendingPathComponent("TunnelBarIcon.png")
 let publicSVGURL = assetsURL.appendingPathComponent("TunnelBarIcon.svg")
+let publicUseURL = assetsURL.appendingPathComponent("PublicUse", isDirectory: true)
 let sitePublicURL = rootURL.appendingPathComponent("site/public", isDirectory: true)
 
 try FileManager.default.createDirectory(at: iconsetURL, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: publicUseURL, withIntermediateDirectories: true)
 try FileManager.default.createDirectory(at: sitePublicURL, withIntermediateDirectories: true)
 
 let sizes: [(name: String, points: Int, scale: Int)] = [
@@ -67,7 +69,7 @@ func renderIcon(pixels: Int) throws -> Data {
     lime.setFill()
     NSBezierPath(roundedRect: iconRect, xRadius: radius, yRadius: radius).fill()
 
-    let glyph = ">_"
+    let glyph = "%_"
     let fontSize = CGFloat(pixels) * 0.34
     let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .semibold)
     let attributes: [NSAttributedString.Key: Any] = [
@@ -99,7 +101,7 @@ func writeIconSVG(to url: URL) throws {
     let svg = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
       <rect x="112" y="112" width="800" height="800" rx="184" fill="#D8FF5F"/>
-      <text x="512" y="590" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace" font-size="348" font-weight="700" letter-spacing="-15" fill="#0C0D0B">&gt;_</text>
+      <text x="512" y="590" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace" font-size="348" font-weight="700" letter-spacing="-15" fill="#0C0D0B">%_</text>
     </svg>
     """
 
@@ -113,11 +115,15 @@ for size in sizes {
 }
 
 try renderIcon(pixels: 1024).write(to: publicIconURL)
+try renderIcon(pixels: 1024).write(to: publicUseURL.appendingPathComponent("tunnelbar-public-icon-1024.png"))
+try renderIcon(pixels: 512).write(to: publicUseURL.appendingPathComponent("tunnelbar-public-icon-512.png"))
+try renderIcon(pixels: 256).write(to: publicUseURL.appendingPathComponent("tunnelbar-public-icon-256.png"))
 try renderIcon(pixels: 512).write(to: sitePublicURL.appendingPathComponent("tunnelbar-icon.png"))
 try renderIcon(pixels: 180).write(to: sitePublicURL.appendingPathComponent("apple-touch-icon.png"))
 try renderIcon(pixels: 32).write(to: sitePublicURL.appendingPathComponent("favicon-32x32.png"))
 try renderIcon(pixels: 16).write(to: sitePublicURL.appendingPathComponent("favicon-16x16.png"))
 try writeIconSVG(to: publicSVGURL)
+try writeIconSVG(to: publicUseURL.appendingPathComponent("tunnelbar-public-icon.svg"))
 try writeIconSVG(to: sitePublicURL.appendingPathComponent("tunnelbar-icon.svg"))
 try writeIconSVG(to: sitePublicURL.appendingPathComponent("favicon.svg"))
 
@@ -139,4 +145,5 @@ guard process.terminationStatus == 0 else {
 
 print("Created \(icnsURL.path)")
 print("Created \(publicIconURL.path)")
+print("Created \(publicUseURL.path)")
 print("Created \(sitePublicURL.path)/favicon.svg")
