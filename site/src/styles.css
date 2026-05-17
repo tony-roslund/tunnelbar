@@ -135,8 +135,10 @@ body {
   background: linear-gradient(
     180deg,
     var(--color-accent) 0%,
-    var(--color-accent) 42%,
-    color-mix(in oklab, var(--color-accent) 42%, var(--color-paper)) 72%,
+    var(--color-accent) 16%,
+    color-mix(in oklab, var(--color-accent) 68%, var(--color-paper)) 36%,
+    color-mix(in oklab, var(--color-accent) 24%, var(--color-paper)) 58%,
+    var(--color-paper) 88%,
     var(--color-paper) 100%
   );
   -webkit-background-clip: text;
