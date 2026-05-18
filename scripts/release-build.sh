@@ -13,6 +13,10 @@ fi
 
 "$ROOT_DIR/scripts/create-dmg.sh"
 
+if [[ -n "${SIGN_IDENTITY:-}" ]]; then
+  "$ROOT_DIR/scripts/sign-dmg.sh"
+fi
+
 if [[ -n "${NOTARYTOOL_PROFILE:-}" || ( -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ) ]]; then
   "$ROOT_DIR/scripts/notarize-dmg.sh"
 else

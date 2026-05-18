@@ -12,9 +12,9 @@ The source is public and source-available, but this is not an open-source projec
 
 ## Download
 
-Signed Mac downloads will be published from GitHub Releases once the Developer ID signing and notarization setup is complete.
+Signed and notarized Mac downloads will be published from GitHub Releases.
 
-Until then, you can build TunnelBar locally from source.
+You can also build TunnelBar locally from source.
 
 ## Features
 
@@ -75,7 +75,7 @@ For a Developer ID release:
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/release-build.sh
 ```
 
-For notarization, either set a stored notarytool profile:
+For signing and notarization, use a stored notarytool profile:
 
 ```sh
 NOTARYTOOL_PROFILE="tunnelbar" SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/release-build.sh
@@ -88,6 +88,7 @@ Individual release steps are also available:
 ```sh
 scripts/sign-app.sh
 scripts/create-dmg.sh
+scripts/sign-dmg.sh
 scripts/notarize-dmg.sh
 ```
 
