@@ -108,7 +108,7 @@ export default function App() {
 
           <div className="flex flex-col gap-5">
             <h1 className="max-w-[12ch] text-balance font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl">
-              Localhost, shipped to a URL.
+              Turn localhost into a public URL.
             </h1>
             <p className="max-w-[58ch] text-pretty text-lg text-ink/68 sm:text-base">
               TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /share/review stay attached.
