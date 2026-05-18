@@ -1,18 +1,33 @@
 # TunnelBar
 
-TunnelBar is a native macOS menu bar app for creating temporary public URLs for local development servers with Cloudflare quick tunnels.
+TunnelBar is a native macOS menu bar app for turning localhost URLs into temporary public tunnel links.
 
-## Current Implementation
+Paste a local URL like `http://localhost:3000/share/review`, start a tunnel, and TunnelBar copies a public URL that keeps the same route. Active tunnels stay visible in the menu bar and stop when you stop them or quit the app.
 
-- SwiftUI/AppKit menu bar shell.
+## Status
+
+TunnelBar is early v1 software.
+
+The source is public and source-available, but this is not an open-source project in the OSI sense because commercial use is restricted. See [License](#license).
+
+## Download
+
+Signed Mac downloads will be published from GitHub Releases once the Developer ID signing and notarization setup is complete.
+
+Until then, you can build TunnelBar locally from source.
+
+## Features
+
+- Native SwiftUI/AppKit menu bar app.
 - Local URL validation for `http://localhost:<port>` and `http://127.0.0.1:<port>`.
-- Origin extraction and path/query/fragment reattachment.
-- `cloudflared tunnel --url <origin>` process lifecycle.
-- Quick tunnel URL parsing from `cloudflared` output.
-- Clipboard copy, stop control, diagnostics log, and local recent history.
-- Bundled Apple Silicon and Intel `cloudflared` binaries with checksum verification.
-- `localhost` inputs are tunneled through `127.0.0.1` internally to avoid macOS IPv4/IPv6 port collisions while preserving the original URL for display and route composition.
-- Common startup failures are translated into user-facing messages while raw `cloudflared` output remains available in Diagnostics.
+- Origin extraction with path, query, and fragment reattachment.
+- Multiple simultaneous active tunnels, with one active tunnel per local origin.
+- Public URL copy after the tunnel URL is reachable.
+- Local server preflight before starting a tunnel.
+- Public-DNS-first quick tunnel verification to avoid local DNS cache misses.
+- Compact active tunnel controls for copy and stop.
+- Diagnostics log for captured `cloudflared` output.
+- Bundled Apple Silicon and Intel `cloudflared` binaries during packaged builds.
 
 ## Run Locally
 
@@ -20,7 +35,7 @@ TunnelBar is a native macOS menu bar app for creating temporary public URLs for 
 swift run TunnelBar
 ```
 
-During development, TunnelBar uses a bundled `cloudflared-arm64`/`cloudflared-amd64` resource when present, then falls back to `cloudflared` on `PATH`.
+During development, TunnelBar uses bundled `cloudflared-arm64` / `cloudflared-amd64` resources when present, then falls back to `cloudflared` on `PATH`.
 
 ## Vendor cloudflared
 
@@ -36,7 +51,7 @@ By default this installs the latest `cloudflared` GitHub release into `Vendor/`.
 scripts/package-app.sh
 ```
 
-Packaging verifies the vendored `cloudflared` checksums before creating `.build/TunnelBar.app`.
+Packaging verifies vendored `cloudflared` checksums before creating `.build/TunnelBar.app`.
 
 ## Release Build
 
@@ -73,3 +88,9 @@ scripts/notarize-dmg.sh
 ```sh
 swift test
 ```
+
+## License
+
+TunnelBar is source-available for noncommercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+Commercial use, resale, paid redistribution, bundling TunnelBar into a commercial product, or offering TunnelBar as part of a paid service requires separate written permission. See [NOTICE.md](NOTICE.md) and [COMMERCIAL.md](COMMERCIAL.md).

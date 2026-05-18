@@ -35,6 +35,7 @@ public struct ActiveTunnel: Equatable, Identifiable, Sendable {
     public var quickTunnelURL: String?
     public var publicURL: String?
     public var state: TunnelState
+    public var statusDetail: String?
 
     var canStop: Bool {
         state == .starting || state == .active
@@ -51,13 +52,19 @@ final class TunnelManager: ObservableObject {
     private var contexts: [UUID: TunnelProcessContext] = [:]
     private let settings: AppSettings
     private let startupTimeoutSeconds: UInt64 = 25
+    private let quickTunnelMaxLaunchAttempts = 3
+    private let publicURLReachabilityAttemptSeconds: TimeInterval = 10
+    private let publicURLReachabilityPollSeconds: TimeInterval = 0.75
     private let localServerCheckTimeoutSeconds = 1.5
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
     }
 
-    func start(rawLocalURL: String, onStarted: @escaping @MainActor @Sendable (String, String) -> Void) {
+    func start(
+        rawLocalURL: String,
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void = { _, _ in }
+    ) {
         let mapping: LocalURLMapping
         do {
             mapping = try LocalURLParser.parse(rawLocalURL)
@@ -80,7 +87,8 @@ final class TunnelManager: ObservableObject {
             tunnelOrigin: mapping.tunnelOrigin.absoluteString,
             quickTunnelURL: nil,
             publicURL: nil,
-            state: .starting
+            state: .starting,
+            statusDetail: "Checking local server"
         )
 
         tunnels.insert(tunnel, at: 0)
@@ -112,7 +120,8 @@ final class TunnelManager: ObservableObject {
                 self.launchCloudflared(
                     tunnelID: tunnelID,
                     mapping: mapping,
-                    onStarted: onStarted
+                    onStarted: onStarted,
+                    attempt: 1
                 )
             }
         }
@@ -121,7 +130,8 @@ final class TunnelManager: ObservableObject {
     private func launchCloudflared(
         tunnelID: UUID,
         mapping: LocalURLMapping,
-        onStarted: @escaping @MainActor @Sendable (String, String) -> Void
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void,
+        attempt: Int
     ) {
         do {
             let executableURL = try CloudflaredLocator.executableURL()
@@ -130,7 +140,7 @@ final class TunnelManager: ObservableObject {
             let errorPipe = Pipe()
 
             process.executableURL = executableURL
-            process.arguments = ["tunnel", "--url", mapping.tunnelOrigin.absoluteString]
+            process.arguments = ["tunnel", "--no-autoupdate", "--url", mapping.tunnelOrigin.absoluteString]
             process.standardOutput = outputPipe
             process.standardError = errorPipe
 
@@ -168,18 +178,31 @@ final class TunnelManager: ObservableObject {
 
             process.terminationHandler = { [weak self] process in
                 Task { @MainActor in
-                    self?.handleTermination(tunnelID: tunnelID, status: process.terminationStatus)
+                    self?.handleTermination(
+                        tunnelID: tunnelID,
+                        process: process,
+                        status: process.terminationStatus
+                    )
                 }
             }
+
+            updateTunnel(tunnelID) { tunnel in
+                tunnel.quickTunnelURL = nil
+                tunnel.publicURL = nil
+                tunnel.state = .starting
+                tunnel.statusDetail = "Starting"
+            }
+            updateAggregateState()
 
             contexts[tunnelID] = TunnelProcessContext(
                 id: tunnelID,
                 mapping: mapping,
                 process: process,
                 outputPipe: outputPipe,
-                errorPipe: errorPipe
+                errorPipe: errorPipe,
+                attempt: attempt
             )
-            appendLog("Starting cloudflared tunnel for \(mapping.origin.absoluteString)")
+            appendLog("Starting cloudflared tunnel for \(mapping.origin.absoluteString) (attempt \(attempt)/\(quickTunnelMaxLaunchAttempts))")
             if mapping.tunnelOrigin != mapping.origin {
                 appendLog("Using \(mapping.tunnelOrigin.absoluteString) for tunnel connection")
             }
@@ -212,7 +235,7 @@ final class TunnelManager: ObservableObject {
     }
 
     func stopAll() {
-        let ids = contexts.keys
+        let ids = Array(contexts.keys)
         if ids.isEmpty {
             tunnels = tunnels.map { tunnel in
                 var updated = tunnel
@@ -262,7 +285,9 @@ final class TunnelManager: ObservableObject {
 
         guard
             contexts[tunnelID] != nil,
-            tunnels.first(where: { $0.id == tunnelID })?.state == .starting,
+            let tunnel = tunnels.first(where: { $0.id == tunnelID }),
+            tunnel.state == .starting,
+            tunnel.quickTunnelURL == nil,
             let quickTunnelURL = CloudflaredLogParser.firstQuickTunnelURL(in: text),
             let publicURL = try? mapping.publicURL(from: quickTunnelURL)
         else {
@@ -271,16 +296,133 @@ final class TunnelManager: ObservableObject {
 
         updateTunnel(tunnelID) { tunnel in
             tunnel.quickTunnelURL = quickTunnelURL.absoluteString
+            tunnel.statusDetail = "Verifying public URL"
+        }
+
+        waitForReachablePublicURL(
+            publicURL,
+            tunnelID: tunnelID,
+            mapping: mapping,
+            onStarted: onStarted
+        )
+    }
+
+    private func waitForReachablePublicURL(
+        _ publicURL: URL,
+        tunnelID: UUID,
+        mapping: LocalURLMapping,
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void
+    ) {
+        contexts[tunnelID]?.startupTask?.cancel()
+        appendLog("Waiting for public URL to become reachable: \(publicURL.absoluteString)")
+
+        contexts[tunnelID]?.startupTask = Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            let deadline = Date().addingTimeInterval(self.publicURLReachabilityAttemptSeconds)
+
+            while Date() < deadline {
+                guard
+                    !Task.isCancelled,
+                    self.contexts[tunnelID] != nil,
+                    self.tunnels.first(where: { $0.id == tunnelID })?.state == .starting
+                else {
+                    return
+                }
+
+                if await PublicTunnelReachability.canReach(publicURL, timeoutSeconds: 1) {
+                    self.activateTunnel(
+                        tunnelID,
+                        publicURL: publicURL,
+                        mapping: mapping,
+                        onStarted: onStarted
+                    )
+                    return
+                }
+
+                try? await Task.sleep(for: .milliseconds(Int(self.publicURLReachabilityPollSeconds * 1000)))
+            }
+
+            guard
+                !Task.isCancelled,
+                self.contexts[tunnelID] != nil,
+                self.tunnels.first(where: { $0.id == tunnelID })?.state == .starting
+            else {
+                return
+            }
+
+            self.retryTunnelAfterUnreachablePublicURL(
+                publicURL,
+                tunnelID: tunnelID,
+                mapping: mapping,
+                onStarted: onStarted
+            )
+        }
+    }
+
+    private func retryTunnelAfterUnreachablePublicURL(
+        _ publicURL: URL,
+        tunnelID: UUID,
+        mapping: LocalURLMapping,
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void
+    ) {
+        guard let context = contexts[tunnelID] else {
+            return
+        }
+
+        appendLog("Public URL did not become reachable within \(Int(publicURLReachabilityAttemptSeconds)) seconds: \(publicURL.absoluteString)")
+
+        guard context.attempt < quickTunnelMaxLaunchAttempts else {
+            let message = "The tunnel service created a public URL, but it did not become reachable after \(quickTunnelMaxLaunchAttempts) quick attempts. Try again in a moment."
+            markTunnel(tunnelID, failed: message)
+            appendLog(message)
+            context.process.terminate()
+            return
+        }
+
+        let nextAttempt = context.attempt + 1
+        updateTunnel(tunnelID) { tunnel in
+            tunnel.statusDetail = "Retrying tunnel URL \(nextAttempt)/\(quickTunnelMaxLaunchAttempts)"
+        }
+        context.ignoreTermination = true
+        context.process.terminate()
+        cleanupContext(tunnelID, cancelStartupTask: false)
+
+        appendLog("Retrying with a fresh tunnel URL (attempt \(nextAttempt)/\(quickTunnelMaxLaunchAttempts))")
+        launchCloudflared(
+            tunnelID: tunnelID,
+            mapping: mapping,
+            onStarted: onStarted,
+            attempt: nextAttempt
+        )
+    }
+
+    private func activateTunnel(
+        _ tunnelID: UUID,
+        publicURL: URL,
+        mapping: LocalURLMapping,
+        onStarted: @escaping @MainActor @Sendable (String, String) -> Void
+    ) {
+        updateTunnel(tunnelID) { tunnel in
             tunnel.publicURL = publicURL.absoluteString
             tunnel.state = .active
+            tunnel.statusDetail = nil
         }
+        lastError = nil
         updateAggregateState()
         contexts[tunnelID]?.startupTask?.cancel()
         copyIfEnabled(publicURL.absoluteString)
         onStarted(mapping.input.absoluteString, publicURL.absoluteString)
     }
 
-    private func handleTermination(tunnelID: UUID, status: Int32) {
+    private func handleTermination(tunnelID: UUID, process: Process, status: Int32) {
+        guard let context = contexts[tunnelID], context.process === process else {
+            updateAggregateState()
+            return
+        }
+
         guard let tunnel = tunnels.first(where: { $0.id == tunnelID }) else {
             cleanupContext(tunnelID)
             updateAggregateState()
@@ -291,11 +433,13 @@ final class TunnelManager: ObservableObject {
         let wasStarting = tunnel.state == .starting
         let wasActive = tunnel.state == .active
         let alreadyFailed = failedMessage(for: tunnel) != nil
-        let context = contexts[tunnelID]
+        let ignoreTermination = context.ignoreTermination
 
         cleanupContext(tunnelID)
 
-        if alreadyFailed {
+        if ignoreTermination {
+            appendLog("cloudflared exited while TunnelBar was retrying")
+        } else if alreadyFailed {
             appendLog("cloudflared exited with status \(status)")
         } else if wasStopping || status == 0 || wasActive {
             updateTunnel(tunnelID) { tunnel in
@@ -304,7 +448,7 @@ final class TunnelManager: ObservableObject {
             appendLog("Tunnel stopped for \(tunnel.origin)")
         } else if wasStarting {
             let message = CloudflaredFailureClassifier.message(
-                outputLines: context?.outputLines ?? [],
+                outputLines: context.outputLines,
                 mapping: tunnelMapping(from: tunnel),
                 fallback: "cloudflared exited before creating a public URL."
             )
@@ -380,6 +524,7 @@ final class TunnelManager: ObservableObject {
     private func markTunnel(_ tunnelID: UUID, failed message: String) {
         updateTunnel(tunnelID) { tunnel in
             tunnel.state = .failed(message)
+            tunnel.statusDetail = nil
         }
         lastError = message
         updateAggregateState()
@@ -417,14 +562,16 @@ final class TunnelManager: ObservableObject {
         return nil
     }
 
-    private func cleanupContext(_ tunnelID: UUID) {
+    private func cleanupContext(_ tunnelID: UUID, cancelStartupTask: Bool = true) {
         guard let context = contexts.removeValue(forKey: tunnelID) else {
             return
         }
 
         context.outputPipe.fileHandleForReading.readabilityHandler = nil
         context.errorPipe.fileHandleForReading.readabilityHandler = nil
-        context.startupTask?.cancel()
+        if cancelStartupTask {
+            context.startupTask?.cancel()
+        }
     }
 
     private func appendLog(_ line: String) {
@@ -459,6 +606,8 @@ private final class TunnelProcessContext {
     let process: Process
     let outputPipe: Pipe
     let errorPipe: Pipe
+    let attempt: Int
+    var ignoreTermination = false
     var startupTask: Task<Void, Never>?
     var outputLines: [String] = []
 
@@ -467,13 +616,15 @@ private final class TunnelProcessContext {
         mapping: LocalURLMapping,
         process: Process,
         outputPipe: Pipe,
-        errorPipe: Pipe
+        errorPipe: Pipe,
+        attempt: Int
     ) {
         self.id = id
         self.mapping = mapping
         self.process = process
         self.outputPipe = outputPipe
         self.errorPipe = errorPipe
+        self.attempt = attempt
     }
 
     func recordOutput(_ text: String) {
@@ -565,6 +716,77 @@ enum LocalServerHealthCheck {
                 gate.finish(false)
             }
         }
+    }
+}
+
+enum PublicTunnelReachability {
+    static func canReach(_ url: URL, timeoutSeconds: TimeInterval) async -> Bool {
+        guard
+            let host = url.host(),
+            await hasPublicDNSAddress(for: host, timeoutSeconds: timeoutSeconds)
+        else {
+            return false
+        }
+
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = timeoutSeconds
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return response is HTTPURLResponse
+        } catch {
+            return false
+        }
+    }
+
+    private static func hasPublicDNSAddress(for host: String, timeoutSeconds: TimeInterval) async -> Bool {
+        var components = URLComponents(string: "https://cloudflare-dns.com/dns-query")
+        components?.queryItems = [
+            URLQueryItem(name: "name", value: host),
+            URLQueryItem(name: "type", value: "A")
+        ]
+
+        guard let url = components?.url else {
+            return false
+        }
+
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
+        request.setValue("application/dns-json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = timeoutSeconds
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard
+                let httpResponse = response as? HTTPURLResponse,
+                httpResponse.statusCode == 200
+            else {
+                return false
+            }
+
+            let dnsResponse = try JSONDecoder().decode(PublicDNSResponse.self, from: data)
+            return dnsResponse.status == 0 && dnsResponse.answer?.contains { $0.type == 1 } == true
+        } catch {
+            return false
+        }
+    }
+}
+
+private struct PublicDNSResponse: Decodable {
+    let status: Int
+    let answer: [PublicDNSAnswer]?
+
+    private enum CodingKeys: String, CodingKey {
+        case status = "Status"
+        case answer = "Answer"
+    }
+}
+
+private struct PublicDNSAnswer: Decodable {
+    let type: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case type
     }
 }
 

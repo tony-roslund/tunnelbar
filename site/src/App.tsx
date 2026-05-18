@@ -1,7 +1,6 @@
 import {
   Check,
   Copy,
-  History,
   Link2,
   Menu,
   Play,
@@ -35,24 +34,17 @@ const featureRows = [
   ["Local only", "Only your local server is exposed by the tunnel process."],
   ["Route preserving", "A URL like http://localhost:3000/share/review keeps its route."],
   ["Visible lifecycle", "Active tunnels are shown in the menu bar and stop on quit."],
-  ["Local history", "Recent tunnel mappings stay on your Mac."],
+  ["No stale links", "Stopped tunnels disappear instead of leaving old public URLs behind."],
 ];
 
-const recentLinks = [
+const activeTunnels = [
   {
     local: "http://localhost:3000/share/review",
     public: "https://demo-tunnel.example/share/review",
-    state: "active",
   },
   {
     local: "http://localhost:3001/invoices/preview",
     public: "https://brisk-river-demo.example/invoices/preview",
-    state: "active",
-  },
-  {
-    local: "http://localhost:3000/api/webhooks/test",
-    public: "https://silent-lab-demo.example/api/webhooks/test",
-    state: "stopped",
   },
 ];
 
@@ -64,6 +56,14 @@ function StatusDot({ tone = "accent" }: { tone?: "accent" | "ember" | "cyan" }) 
   }[tone];
 
   return <span className={`size-2 rounded-full ${color}`} aria-hidden="true" />;
+}
+
+function AppleLogoIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+    </svg>
+  );
 }
 
 function updateGlowPosition(event: PointerEvent<HTMLDivElement>) {
@@ -114,13 +114,21 @@ export default function App() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <a
-              href="#status"
-              className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-3 text-base font-medium text-paper ring-1 ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-sm"
+              href="https://github.com/tony-roslund/tunnelbar/releases"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-base font-medium text-paper ring-1 ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-sm"
             >
+              <AppleLogoIcon />
               Download for Mac
             </a>
+            <p className="font-mono text-base text-ink/62 sm:text-sm">
+              No Sign Up.
+              <br />
+              Free Forever.
+            </p>
           </div>
 
         </div>
@@ -238,18 +246,18 @@ export default function App() {
               <div className="text-ink/52">local URL -&gt; temporary public URL</div>
             </div>
 
-            <div className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+            <dl className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
               {featureRows.map(([title, copy], index) => (
                 <div key={title} className="min-h-44 p-5">
                   <div className="mb-8 flex items-center justify-between font-mono text-base sm:text-sm">
                     <span className="text-ink/52">0{index + 1}</span>
                     <Check className="size-4 text-accent" aria-hidden="true" />
                   </div>
-                  <h3 className="font-mono text-base text-accent sm:text-sm">{title}</h3>
-                  <p className="mt-3 text-pretty text-base text-ink/64 sm:text-sm">{copy}</p>
+                  <dt className="font-mono text-base text-accent sm:text-sm">{title}</dt>
+                  <dd className="mt-3 text-pretty text-base text-ink/64 sm:text-sm">{copy}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </div>
         </div>
       </section>
@@ -258,21 +266,21 @@ export default function App() {
         <div className="flex flex-col gap-5">
           <div className="flex w-fit items-center gap-2 rounded-full border border-line bg-ink/4 px-3 py-1.5 font-mono text-base text-ink/72 sm:text-sm">
             <StatusDot />
-            clipboard history
+            running links
           </div>
           <h2 className="max-w-[12ch] text-balance font-heading text-4xl font-semibold text-ink sm:text-5xl">
-            Recent links stay in the menu bar.
+            Active tunnels stay in the menu bar.
           </h2>
           <p className="max-w-[50ch] text-pretty text-lg text-ink/64 sm:text-base">
-            TunnelBar keeps the last local URL and public tunnel URL together, so you can copy the same routed link again without restarting the flow.
+            TunnelBar shows the public URLs that are alive right now. Stop a tunnel and the link leaves the popover with the process.
           </p>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-line bg-[#080907] shadow-2xl shadow-black/40 outline-1 -outline-offset-1 outline-white/10">
           <div className="flex items-center justify-between border-b border-line bg-[#171816] px-4 py-3 font-mono text-base text-ink/70 sm:text-sm">
             <div className="flex items-center gap-2">
-              <History className="size-4 text-accent" aria-hidden="true" />
-              recent tunnels
+              <Link2 className="size-4 text-accent" aria-hidden="true" />
+              active tunnels
             </div>
             <div className="flex items-center gap-2 text-ink/56">
               <Menu className="size-4" aria-hidden="true" />
@@ -281,7 +289,7 @@ export default function App() {
           </div>
 
           <div className="grid gap-3 p-4">
-            {recentLinks.map((link, index) => (
+            {activeTunnels.map((link, index) => (
               <div
                 key={link.public}
                 className="grid gap-3 rounded-md border border-line bg-paper/88 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
@@ -291,7 +299,7 @@ export default function App() {
                     <Link2 className="size-4 text-accent" aria-hidden="true" />
                     <span>0{index + 1}</span>
                     <span className="rounded-full border border-line px-2 py-0.5 text-ink/56">
-                      {link.state}
+                      active
                     </span>
                   </div>
                   <div className="grid gap-2 font-mono text-base sm:text-sm">
@@ -304,9 +312,13 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="inline-flex w-fit items-center gap-2 rounded-md border border-line bg-ink/5 px-3 py-2 font-mono text-base text-ink/72 sm:text-sm">
-                  <Copy className="size-4" aria-hidden="true" />
-                  Copy
+                <div className="flex items-center gap-2 sm:justify-self-end">
+                  <div className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-accent">
+                    <Copy className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-ember">
+                    <Square className="size-4" aria-hidden="true" />
+                  </div>
                 </div>
               </div>
             ))}

@@ -11,6 +11,8 @@ struct TunnelBarApp: App {
         Settings {
             SettingsView(settings: settings)
         }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 430, height: 300)
     }
 }
 
@@ -20,8 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private let settings = AppSettings.shared
     private lazy var tunnelManager = TunnelManager(settings: settings)
-    private let historyStore = HistoryStore()
     private var settingsCancellable: AnyCancellable?
+    private var popoverSizeCancellable: AnyCancellable?
+    private var windowWillCloseObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         applyActivationPolicy(showDockIcon: settings.showDockIcon)
@@ -30,16 +33,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] showDockIcon in
                 self?.applyActivationPolicy(showDockIcon: showDockIcon)
             }
+        windowWillCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(50))
+                guard let self else {
+                    return
+                }
+
+                self.applyActivationPolicy(showDockIcon: self.settings.showDockIcon)
+            }
+        }
 
         let contentView = TunnelBarView(
             tunnelManager: tunnelManager,
-            historyStore: historyStore,
-            settings: settings
+            settings: settings,
+            onHeightChange: { [weak self] height in
+                self?.setPopoverHeight(height)
+            }
         )
 
+        let hostingController = NSHostingController(rootView: contentView)
+        hostingController.sizingOptions = [.preferredContentSize]
+
+        popover.contentSize = NSSize(
+            width: TunnelBarViewMetrics.width,
+            height: TunnelBarViewMetrics.collapsedHeight
+        )
+        popoverSizeCancellable = hostingController.publisher(for: \.preferredContentSize)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] size in
+                self?.setPopoverHeight(size.height)
+            }
+
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 420, height: 620)
-        popover.contentViewController = NSHostingController(rootView: contentView)
+        popover.appearance = NSAppearance(named: .darkAqua)
+        popover.contentViewController = hostingController
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = nil
@@ -70,6 +102,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyActivationPolicy(showDockIcon: Bool) {
-        NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
+        if showDockIcon {
+            NSApp.setActivationPolicy(.regular)
+            return
+        }
+
+        guard !hasVisibleStandardWindow else {
+            return
+        }
+
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    private var hasVisibleStandardWindow: Bool {
+        NSApp.windows.contains { window in
+            window.isVisible
+                && window.canBecomeKey
+                && window.level == .normal
+        }
+    }
+
+    private func setPopoverHeight(_ rawHeight: CGFloat) {
+        let height = min(
+            max(ceil(rawHeight), TunnelBarViewMetrics.minimumHeight),
+            TunnelBarViewMetrics.maximumHeight
+        )
+        let nextSize = NSSize(width: TunnelBarViewMetrics.width, height: height)
+
+        guard abs(popover.contentSize.height - height) > 1 else {
+            return
+        }
+
+        guard !popover.isShown else {
+            return
+        }
+
+        popover.contentSize = nextSize
     }
 }
