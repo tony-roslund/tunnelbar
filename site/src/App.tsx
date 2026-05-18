@@ -109,11 +109,11 @@ export default function App() {
 
           <div className="flex flex-col gap-5">
             <h1
-              className="inline-flex flex-col font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl"
+              className="inline-flex w-fit flex-col items-start font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl"
               aria-label="localhost to Public URL"
             >
               <span className="block">localhost</span>
-              <span className="flex h-12 items-center justify-center sm:h-14 lg:h-16" aria-hidden="true">
+              <span className="flex h-12 -translate-x-[0.18em] items-center self-center sm:h-14 lg:h-16" aria-hidden="true">
                 <ArrowDown className="size-9 shrink-0 stroke-accent sm:size-10 lg:size-11" strokeWidth={3.25} />
               </span>
               <span className="block">Public URL</span>
