@@ -135,7 +135,7 @@ export default function App() {
             <p className="font-mono text-base text-ink/62 sm:text-sm">
               No Sign Up.
               <br />
-              Free for local dev.
+              Free Forever.
             </p>
           </div>
 
