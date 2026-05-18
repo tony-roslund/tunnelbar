@@ -14,7 +14,7 @@ struct TunnelBarView: View {
     @ObservedObject var settings: AppSettings
     var onHeightChange: ((CGFloat) -> Void)?
 
-    @State private var localURL = "http://localhost:3000"
+    @State private var localURL = ""
     @State private var showDiagnostics: Bool
     @State private var showAbout = false
 
@@ -39,6 +39,7 @@ struct TunnelBarView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 inputSection
+                startingSection
                 activeSection
                 diagnosticsSection
                 footer
@@ -53,6 +54,9 @@ struct TunnelBarView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: visibleTunnelCount)
         .animation(.easeInOut(duration: 0.2), value: showDiagnostics)
+        .onChange(of: tunnelManager.tunnels) { _, tunnels in
+            clearInputWhenMatchingTunnelBecomesActive(tunnels)
+        }
         .sheet(isPresented: $showAbout) {
             AboutTunnelBarView()
         }
@@ -118,20 +122,47 @@ struct TunnelBarView: View {
     }
 
     @ViewBuilder
+    private var startingSection: some View {
+        let startingTunnels = tunnelManager.tunnels.filter { tunnel in
+            tunnel.state == .starting && tunnel.publicURL == nil
+        }
+
+        if !startingTunnels.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(startingTunnels) { tunnel in
+                    TerminalTunnelLine(
+                        tunnel: tunnel,
+                        statusColor: color(for: tunnel.state),
+                        onStop: { tunnelManager.stop(tunnel.id) },
+                        onCopy: { tunnelManager.copyPublicURL(for: tunnel.id) },
+                        publicURL: tunnelManager.publicURL(for: tunnel.id),
+                        mode: .statusOnly
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private var activeSection: some View {
         let visibleTunnels = tunnelManager.tunnels.filter { tunnel in
-            tunnel.state == .active || tunnel.state == .starting || tunnel.state == .stopping
+            (tunnel.state == .active || tunnel.state == .stopping) && tunnel.publicURL != nil
         }
 
         if !visibleTunnels.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Active tunnels")
+                    .font(.system(.callout, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(TBTheme.primaryText)
+
                 ForEach(visibleTunnels) { tunnel in
                     TerminalTunnelLine(
                         tunnel: tunnel,
                         statusColor: color(for: tunnel.state),
                         onStop: { tunnelManager.stop(tunnel.id) },
                         onCopy: { tunnelManager.copyPublicURL(for: tunnel.id) },
-                        publicURL: tunnelManager.publicURL(for: tunnel.id)
+                        publicURL: tunnelManager.publicURL(for: tunnel.id),
+                        mode: .paired
                     )
                 }
             }
@@ -248,6 +279,26 @@ struct TunnelBarView: View {
         case .idle, .stopped:
             .secondary
         }
+    }
+
+    private func clearInputWhenMatchingTunnelBecomesActive(_ tunnels: [ActiveTunnel]) {
+        let trimmedLocalURL = localURL.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedLocalURL.isEmpty else {
+            return
+        }
+
+        let normalizedInputURL = (try? LocalURLParser.parse(trimmedLocalURL).input.absoluteString) ?? trimmedLocalURL
+
+        guard tunnels.contains(where: { tunnel in
+            tunnel.state == .active
+                && tunnel.publicURL != nil
+                && tunnel.localURL == normalizedInputURL
+        }) else {
+            return
+        }
+
+        localURL = ""
     }
 }
 
@@ -373,7 +424,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.7"
+            "Version 0.1.8"
         }
     }
 }
@@ -395,52 +446,100 @@ private struct TunnelBarLogoView: View {
 }
 
 private struct TerminalTunnelLine: View {
+    enum Mode {
+        case statusOnly
+        case paired
+    }
+
     let tunnel: ActiveTunnel
     let statusColor: Color
     let onStop: () -> Void
     let onCopy: () -> Void
     let publicURL: URL?
+    let mode: Mode
 
     var body: some View {
+        switch mode {
+        case .statusOnly:
+            statusLine
+                .padding(.vertical, 2)
+        case .paired:
+            pairedTunnelCard
+        }
+    }
+
+    private var pairedTunnelCard: some View {
         VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                pairedURLLine(label: "local", value: tunnel.localURL, valueColor: TBTheme.primaryText.opacity(0.72))
+
+                Spacer(minLength: 8)
+
+                Button(action: onCopy) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(TBTheme.accent)
+                }
+                .buttonStyle(.plain)
+                .help("Copy public URL")
+
+                Button(action: onStop) {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(TBTheme.danger)
+                }
+                .buttonStyle(.plain)
+                .help("Stop tunnel")
+            }
+
             if let publicString = tunnel.publicURL {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    TypewriterText("Tunnel URL:", color: TBTheme.accent, speedMilliseconds: 18)
-
-                    TypewriterText(publicString, color: TBTheme.primaryText, speedMilliseconds: 8)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Spacer(minLength: 4)
-
-                    Button(action: onCopy) {
-                        Image(systemName: "doc.on.doc")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(TBTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Copy public URL")
-                }
-            } else if case .failed(let message) = tunnel.state {
-                MessagePanel(title: "Tunnel failed", message: message)
-            } else if shouldAnimateStatus {
-                HStack(alignment: .center, spacing: 0) {
-                    TypewriterText(
-                        statusTitle,
-                        color: TBTheme.primaryText,
-                        speedMilliseconds: 20,
-                        showsCursor: true,
-                        cursorColor: TBTheme.accent
-                    )
-                    Spacer()
-                }
-            } else {
-                Text(statusTitle)
-                    .foregroundStyle(statusColor)
+                pairedURLLine(label: "public", value: publicString, valueColor: TBTheme.primaryText)
             }
         }
         .font(.system(.body, design: .monospaced).weight(.semibold))
-        .padding(.vertical, 2)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(TBTheme.fieldBackground)
+                .stroke(TBTheme.border)
+        )
+    }
+
+    private func pairedURLLine(label: String, value: String, valueColor: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label)
+                .foregroundStyle(TBTheme.accent)
+                .frame(width: 48, alignment: .leading)
+
+            Text(value)
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var statusLine: some View {
+        if case .failed(let message) = tunnel.state {
+            MessagePanel(title: "Tunnel failed", message: message)
+        } else if shouldAnimateStatus {
+            HStack(alignment: .center, spacing: 0) {
+                TypewriterText(
+                    statusTitle,
+                    color: TBTheme.primaryText,
+                    speedMilliseconds: 20,
+                    showsCursor: true,
+                    cursorColor: TBTheme.accent
+                )
+                Spacer()
+            }
+            .font(.system(.body, design: .monospaced).weight(.semibold))
+        } else {
+            Text(statusTitle)
+                .font(.system(.body, design: .monospaced).weight(.semibold))
+                .foregroundStyle(statusColor)
+        }
     }
 
     private var statusTitle: String {
