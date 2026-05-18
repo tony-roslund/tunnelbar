@@ -125,7 +125,7 @@ export default function App() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <a
-              href="https://github.com/tony-roslund/tunnelbar/releases/download/v0.1.2/TunnelBar-0.1.2.dmg"
+              href="https://github.com/tony-roslund/tunnelbar/releases/download/v0.1.3/TunnelBar-0.1.3.dmg"
               rel="noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-base font-medium text-paper ring-1 ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:text-sm"
             >
