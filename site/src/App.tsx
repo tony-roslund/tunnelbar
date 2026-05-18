@@ -1,6 +1,7 @@
 import {
   Check,
   Copy,
+  Github,
   Link2,
   Menu,
   Play,
@@ -357,10 +358,19 @@ export default function App() {
               />
             </a>
             <a
+              href="https://github.com/tony-roslund/tunnelbar"
+              target="_blank"
+              rel="noreferrer"
+              className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-ink/72 hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label="View TunnelBar on GitHub"
+            >
+              <Github className="size-4" aria-hidden="true" />
+            </a>
+            <a
               href="https://x.com/tonyroslund"
               target="_blank"
               rel="noreferrer"
-              className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-ink/72 hover:border-accent/50 hover:text-accent"
+              className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-ink/72 hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               aria-label="Follow Tony Roslund on X"
             >
               <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden="true">
