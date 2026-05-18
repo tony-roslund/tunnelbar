@@ -426,14 +426,6 @@ private struct TerminalTunnelLine: View {
                     TypewriterText(statusTitle, color: statusColor, speedMilliseconds: 20)
                     AnimatedEllipsis(color: statusColor)
                     Spacer()
-
-                    Button(action: onStop) {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(TBTheme.danger)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Stop this tunnel")
                 }
             } else {
                 Text(statusTitle)
