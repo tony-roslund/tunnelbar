@@ -29,6 +29,14 @@ Until then, you can build TunnelBar locally from source.
 - Diagnostics log for captured `cloudflared` output.
 - Bundled Apple Silicon and Intel `cloudflared` binaries during packaged builds.
 
+## Tunnel Availability
+
+TunnelBar uses account-less Cloudflare Quick Tunnels for local development previews. Cloudflare describes Quick Tunnels as a way to experiment without an account and notes that they are for testing and development, not production.
+
+Cloudflare does not provide an uptime guarantee or SLA for account-less Quick Tunnels. Cloudflare also documents current Quick Tunnel limits, including a 200 concurrent in-flight request limit and no Server-Sent Events support.
+
+TunnelBar does not control Cloudflare's service availability, limits, or terms. Review Cloudflare's [Quick Tunnel docs](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/) and [Website and Online Services Terms](https://www.cloudflare.com/policies/terms/) before relying on the generated URLs. If you need production reliability, use a named Cloudflare Tunnel in your own Cloudflare account instead of an account-less Quick Tunnel.
+
 ## Run Locally
 
 ```sh
