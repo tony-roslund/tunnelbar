@@ -371,7 +371,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.4"
+            "Version 0.1.5"
         }
     }
 }
@@ -466,8 +466,15 @@ private struct TypewriterText: View {
     }
 
     var body: some View {
-        Text(String(text.prefix(visibleCount)))
-            .foregroundStyle(color)
+        ZStack(alignment: .leading) {
+            Text(text)
+                .foregroundStyle(color)
+                .opacity(0)
+                .accessibilityHidden(true)
+
+            Text(String(text.prefix(visibleCount)))
+                .foregroundStyle(color)
+        }
             .task(id: text) {
                 visibleCount = 0
 
@@ -494,7 +501,9 @@ private struct AnimatedEllipsis: View {
             let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 4
             ZStack(alignment: .leading) {
                 Text(". . .")
+                    .foregroundStyle(color)
                     .opacity(0)
+                    .accessibilityHidden(true)
 
                 Text(String(repeating: " .", count: dotCount))
                     .foregroundStyle(color)
