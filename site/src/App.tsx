@@ -1,4 +1,5 @@
 import {
+  ArrowDown,
   Check,
   Copy,
   Github,
@@ -107,8 +108,15 @@ export default function App() {
           </div>
 
           <div className="flex flex-col gap-5">
-            <h1 className="max-w-[12ch] text-balance font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl">
-              Turn localhost into a public URL.
+            <h1
+              className="max-w-[11ch] font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl"
+              aria-label="localhost to Public URL"
+            >
+              <span className="block">localhost</span>
+              <span className="flex h-10 items-center sm:h-12 lg:h-14" aria-hidden="true">
+                <ArrowDown className="size-6 shrink-0 stroke-accent" />
+              </span>
+              <span className="block">Public URL</span>
             </h1>
             <p className="max-w-[58ch] text-pretty text-lg text-ink/68 sm:text-base">
               TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /share/review stay attached.
