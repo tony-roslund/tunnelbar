@@ -109,12 +109,12 @@ export default function App() {
 
           <div className="flex flex-col gap-5">
             <h1
-              className="max-w-[11ch] font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl"
+              className="inline-flex flex-col font-heading text-5xl font-semibold text-ink sm:text-6xl lg:text-7xl"
               aria-label="localhost to Public URL"
             >
               <span className="block">localhost</span>
-              <span className="flex h-10 items-center sm:h-12 lg:h-14" aria-hidden="true">
-                <ArrowDown className="size-6 shrink-0 stroke-accent" />
+              <span className="flex h-12 items-center justify-center sm:h-14 lg:h-16" aria-hidden="true">
+                <ArrowDown className="size-9 shrink-0 stroke-accent sm:size-10 lg:size-11" strokeWidth={3.25} />
               </span>
               <span className="block">Public URL</span>
             </h1>
