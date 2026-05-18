@@ -150,7 +150,7 @@ struct TunnelBarView: View {
         }
 
         if !visibleTunnels.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Active tunnels")
                     .font(.system(.callout, design: .monospaced).weight(.semibold))
                     .foregroundStyle(TBTheme.primaryText)
@@ -424,7 +424,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.8"
+            "Version 0.1.9"
         }
     }
 }
@@ -470,53 +470,68 @@ private struct TerminalTunnelLine: View {
 
     private var pairedTunnelCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
-                pairedURLLine(label: "local", value: tunnel.localURL, valueColor: TBTheme.primaryText.opacity(0.72))
+            Rectangle()
+                .fill(TBTheme.border)
+                .frame(height: 1)
 
-                Spacer(minLength: 8)
-
-                Button(action: onCopy) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(TBTheme.accent)
-                }
-                .buttonStyle(.plain)
-                .help("Copy public URL")
-
-                Button(action: onStop) {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(TBTheme.danger)
-                }
-                .buttonStyle(.plain)
-                .help("Stop tunnel")
-            }
+            pairedURLLine(
+                label: "l:",
+                value: tunnel.localURL,
+                valueColor: TBTheme.primaryText.opacity(0.72),
+                trailing: stopButton
+            )
 
             if let publicString = tunnel.publicURL {
-                pairedURLLine(label: "public", value: publicString, valueColor: TBTheme.primaryText)
+                pairedURLLine(
+                    label: "p:",
+                    value: publicString,
+                    valueColor: TBTheme.primaryText,
+                    trailing: copyButton
+                )
             }
         }
         .font(.system(.body, design: .monospaced).weight(.semibold))
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(TBTheme.fieldBackground)
-                .stroke(TBTheme.border)
-        )
     }
 
-    private func pairedURLLine(label: String, value: String, valueColor: Color) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+    private func pairedURLLine<Trailing: View>(
+        label: String,
+        value: String,
+        valueColor: Color,
+        trailing: Trailing
+    ) -> some View {
+        HStack(alignment: .center, spacing: 8) {
             Text(label)
                 .foregroundStyle(TBTheme.accent)
-                .frame(width: 48, alignment: .leading)
+                .frame(width: 22, alignment: .leading)
 
             Text(value)
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailing
         }
+    }
+
+    private var copyButton: some View {
+        Button(action: onCopy) {
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(TBTheme.accent)
+        }
+        .buttonStyle(.plain)
+        .help("Copy public URL")
+    }
+
+    private var stopButton: some View {
+        Button(action: onStop) {
+            Image(systemName: "stop.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(TBTheme.danger)
+        }
+        .buttonStyle(.plain)
+        .help("Stop tunnel")
     }
 
     @ViewBuilder
