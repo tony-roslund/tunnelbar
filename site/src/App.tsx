@@ -4,11 +4,13 @@ import {
   Copy,
   Github,
   Link2,
+  Mail,
   Menu,
   Play,
   Square,
   Terminal,
 } from "lucide-react";
+import { useState } from "react";
 import type { PointerEvent } from "react";
 
 const flowSteps = [
@@ -50,6 +52,45 @@ const activeTunnels = [
   },
 ];
 
+const faqItems = [
+  {
+    id: "pricing",
+    question: "How much does TunnelBar cost?",
+    answer:
+      "TunnelBar is free forever for local development. There is no account, usage meter, or paid plan in the app.",
+  },
+  {
+    id: "how-it-works",
+    question: "How does TunnelBar create the public URL?",
+    answer:
+      "TunnelBar starts a temporary Cloudflare Tunnel from your Mac to the local URL you enter, then copies the generated public URL. Your local app still runs on your machine; the tunnel forwards public traffic to it while the tunnel is active.",
+  },
+  {
+    id: "cloudflare-account",
+    question: "Do I need a Cloudflare account?",
+    answer:
+      "No. TunnelBar uses Cloudflare's temporary tunnel flow, so you can start sharing a localhost app without setting up DNS, a dashboard, or a Cloudflare login.",
+  },
+  {
+    id: "localhost-redirect",
+    question: "Why does the shared link sometimes turn back into localhost?",
+    answer:
+      "That usually means your local app redirected the visitor to an absolute URL like http://localhost:3000/signin. The tunnel is working, but the app is telling the browser to leave the public host. Configure your app's auth, base URL, callback URL, or trusted host setting to allow the tunnel host, and prefer relative redirects like /signin when possible.",
+  },
+  {
+    id: "routes",
+    question: "Will paths and navigation keep working?",
+    answer:
+      "Yes, as long as the app uses relative paths. A page at http://localhost:3000/share/review can be shared through the public tunnel URL with /share/review attached. Links like /settings keep the public host; hardcoded http://localhost:3000/settings links do not.",
+  },
+  {
+    id: "lifetime",
+    question: "How long does a tunnel URL stay live?",
+    answer:
+      "A tunnel URL is temporary. It stays useful while your Mac is awake, your local server is running, and the tunnel is active in TunnelBar. Stop the tunnel, quit the app, or shut down the local server and the public URL stops working.",
+  },
+];
+
 function StatusDot({ tone = "accent" }: { tone?: "accent" | "ember" | "cyan" }) {
   const color = {
     accent: "bg-accent",
@@ -72,6 +113,57 @@ function updateGlowPosition(event: PointerEvent<HTMLDivElement>) {
   const rect = event.currentTarget.getBoundingClientRect();
   event.currentTarget.style.setProperty("--glow-x", `${event.clientX - rect.left}px`);
   event.currentTarget.style.setProperty("--glow-y", `${event.clientY - rect.top}px`);
+}
+
+function FaqAccordion() {
+  const [openItem, setOpenItem] = useState<string | null>(faqItems[0].id);
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-[#080907] shadow-2xl shadow-black/30 outline-1 -outline-offset-1 outline-white/10">
+      {faqItems.map((item, index) => {
+        const isOpen = openItem === item.id;
+        const contentId = `faq-${item.id}`;
+
+        return (
+          <div key={item.id} className={index > 0 ? "border-t border-line" : undefined}>
+            <h3>
+              <button
+                type="button"
+                className="group flex w-full items-center justify-between gap-6 px-4 py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-5"
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                onClick={() => setOpenItem(isOpen ? null : item.id)}
+              >
+                <span className="min-w-0 text-pretty font-mono text-base font-medium text-ink sm:text-sm">
+                  {item.question}
+                </span>
+                <span className="relative grid size-7 shrink-0 place-items-center rounded-md border border-line bg-ink/5 text-accent">
+                  <span className="absolute h-px w-3 bg-current" />
+                  <span
+                    className={`absolute h-3 w-px bg-current transition-[opacity,transform] duration-200 ${
+                      isOpen ? "rotate-90 opacity-0" : "rotate-0 opacity-100"
+                    }`}
+                  />
+                </span>
+              </button>
+            </h3>
+            <div
+              id={contentId}
+              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <p className="max-w-[78ch] px-4 pb-5 text-pretty text-base text-ink/64 sm:px-5 sm:text-sm">
+                  {item.answer}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function App() {
@@ -119,7 +211,7 @@ export default function App() {
               <span className="block">Public URL</span>
             </h1>
             <p className="max-w-[58ch] text-pretty text-lg text-ink/68 sm:text-base">
-              TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /share/review stay attached.
+              TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /share or /review stay attached.
             </p>
           </div>
 
@@ -334,6 +426,25 @@ export default function App() {
         </div>
       </section>
 
+      <section className="border-t border-line bg-ink/[0.025]">
+        <div className="mx-auto grid max-w-7xl gap-9 px-5 py-20 sm:px-8 lg:grid-cols-[9fr_15fr] lg:items-start">
+          <div className="flex flex-col gap-5">
+            <div className="flex w-fit items-center gap-2 rounded-full border border-line bg-ink/4 px-3 py-1.5 font-mono text-base text-ink/72 sm:text-sm">
+              <StatusDot tone="cyan" />
+              questions
+            </div>
+            <h2 className="max-w-[12ch] text-balance font-heading text-4xl font-semibold text-ink sm:text-5xl">
+              Good to know before you share.
+            </h2>
+            <p className="max-w-[50ch] text-pretty text-lg text-ink/64 sm:text-base">
+              The short version: TunnelBar is free, temporary, and built for local development links.
+            </p>
+          </div>
+
+          <FaqAccordion />
+        </div>
+      </section>
+
       <section id="status" className="relative h-[clamp(8.75rem,20vw,17rem)] overflow-hidden border-t border-line">
         <div className="flex h-full w-full items-end justify-center px-5 sm:px-8">
           <p className="status-wordmark translate-y-[10px] whitespace-nowrap font-mono font-semibold" aria-label="TunnelBar">
@@ -372,6 +483,13 @@ export default function App() {
               aria-label="View TunnelBar on GitHub"
             >
               <Github className="size-4" aria-hidden="true" />
+            </a>
+            <a
+              href="mailto:tony@tonyroslund.com"
+              className="grid size-9 place-items-center rounded-md border border-line bg-ink/5 text-ink/72 hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label="Email Tony Roslund"
+            >
+              <Mail className="size-4" aria-hidden="true" />
             </a>
             <a
               href="https://x.com/tonyroslund"
