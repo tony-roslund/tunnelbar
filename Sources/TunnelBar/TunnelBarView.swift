@@ -252,6 +252,7 @@ struct TunnelBarView: View {
 
 enum TBTheme {
     static let accent = Color(red: 0.85, green: 1.0, blue: 0.37)
+    static let nsAccent = NSColor(calibratedRed: 0.85, green: 1.0, blue: 0.37, alpha: 1)
     static let success = Color(red: 0.38, green: 0.95, blue: 0.46)
     static let warning = Color(red: 1.0, green: 0.56, blue: 0.18)
     static let danger = Color(red: 1.0, green: 0.28, blue: 0.24)
@@ -371,7 +372,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.5"
+            "Version 0.1.6"
         }
     }
 }
@@ -422,9 +423,14 @@ private struct TerminalTunnelLine: View {
             } else if case .failed(let message) = tunnel.state {
                 MessagePanel(title: "Tunnel failed", message: message)
             } else if shouldAnimateStatus {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    TypewriterText(statusTitle, color: statusColor, speedMilliseconds: 20)
-                    AnimatedEllipsis(color: statusColor)
+                HStack(alignment: .center, spacing: 0) {
+                    TypewriterText(
+                        statusTitle,
+                        color: statusColor,
+                        speedMilliseconds: 20,
+                        showsCursor: true,
+                        cursorColor: TBTheme.accent
+                    )
                     Spacer()
                 }
             } else {
@@ -456,24 +462,46 @@ private struct TypewriterText: View {
     private let text: String
     private let color: Color
     private let speedMilliseconds: UInt64
+    private let showsCursor: Bool
+    private let cursorColor: Color
 
     @State private var visibleCount = 0
 
-    init(_ text: String, color: Color, speedMilliseconds: UInt64 = 20) {
+    init(
+        _ text: String,
+        color: Color,
+        speedMilliseconds: UInt64 = 20,
+        showsCursor: Bool = false,
+        cursorColor: Color? = nil
+    ) {
         self.text = text
         self.color = color
         self.speedMilliseconds = speedMilliseconds
+        self.showsCursor = showsCursor
+        self.cursorColor = cursorColor ?? color
     }
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Text(text)
+            HStack(spacing: 2) {
+                Text(text)
+
+                if showsCursor {
+                    TerminalBlockCursor(color: cursorColor)
+                }
+            }
                 .foregroundStyle(color)
                 .opacity(0)
                 .accessibilityHidden(true)
 
-            Text(String(text.prefix(visibleCount)))
-                .foregroundStyle(color)
+            HStack(spacing: 2) {
+                Text(String(text.prefix(visibleCount)))
+                    .foregroundStyle(color)
+
+                if showsCursor {
+                    TerminalBlockCursor(color: cursorColor)
+                }
+            }
         }
             .task(id: text) {
                 visibleCount = 0
@@ -493,23 +521,20 @@ private struct TypewriterText: View {
     }
 }
 
-private struct AnimatedEllipsis: View {
+private struct TerminalBlockCursor: View {
     let color: Color
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.45)) { context in
-            let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 4
-            ZStack(alignment: .leading) {
-                Text(". . .")
-                    .foregroundStyle(color)
-                    .opacity(0)
-                    .accessibilityHidden(true)
+        TimelineView(.periodic(from: .now, by: 0.85)) { context in
+            let isVisible = Int(context.date.timeIntervalSinceReferenceDate / 0.85) % 2 == 0
 
-                Text(String(repeating: " .", count: dotCount))
-                    .foregroundStyle(color)
-            }
-            .monospacedDigit()
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .fill(color)
+                .frame(width: 8, height: 14)
+                .opacity(isVisible ? 1 : 0)
+                .accessibilityHidden(true)
         }
+        .frame(width: 8, height: 14)
     }
 }
 
@@ -540,6 +565,7 @@ private struct InlineURLTextField: NSViewRepresentable {
             blue: 0.90,
             alpha: 1
         )
+        textField.insertionPointColor = TBTheme.nsAccent
         textField.placeholderAttributedString = NSAttributedString(
             string: placeholder,
             attributes: [
@@ -582,6 +608,7 @@ private struct InlineURLTextField: NSViewRepresentable {
 
 private final class CaretAtEndTextField: NSTextField {
     private var didRequestInitialFocus = false
+    var insertionPointColor: NSColor = .textColor
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -611,6 +638,7 @@ private final class CaretAtEndTextField: NSTextField {
 
         if didBecomeFirstResponder {
             DispatchQueue.main.async { [weak self] in
+                self?.applyInsertionPointColor()
                 self?.clearFullSelection()
             }
         }
@@ -639,6 +667,14 @@ private final class CaretAtEndTextField: NSTextField {
 
     private func moveCaretToEnd() {
         currentEditor()?.selectedRange = NSRange(location: stringValue.count, length: 0)
+    }
+
+    private func applyInsertionPointColor() {
+        guard let editor = currentEditor() as? NSTextView else {
+            return
+        }
+
+        editor.insertionPointColor = insertionPointColor
     }
 }
 
