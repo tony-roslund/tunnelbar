@@ -36,15 +36,15 @@ const flowSteps = [
 
 const featureRows = [
   ["Local only", "Only your local server is exposed by the tunnel process."],
-  ["Route preserving", "A URL like http://localhost:3000/share/review keeps its route."],
+  ["Route preserving", "A URL like http://localhost:3000/settings keeps its route."],
   ["Visible lifecycle", "Active tunnels are shown in the menu bar and stop on quit."],
   ["No stale links", "Stopped tunnels disappear instead of leaving old public URLs behind."],
 ];
 
 const activeTunnels = [
   {
-    local: "http://localhost:3000/share/review",
-    public: "https://demo-tunnel.example/share/review",
+    local: "http://localhost:3000/settings",
+    public: "https://demo-tunnel.example/settings",
   },
   {
     local: "http://localhost:3001/invoices/preview",
@@ -81,7 +81,7 @@ const faqItems = [
     id: "routes",
     question: "Will paths and navigation keep working?",
     answer:
-      "Yes, as long as the app uses relative paths. A page at http://localhost:3000/share/review can be shared through the public tunnel URL with /share/review attached. Links like /settings keep the public host; hardcoded http://localhost:3000/settings links do not.",
+      "Yes, as long as the app uses relative paths. A page at http://localhost:3000/settings can be shared through the public tunnel URL with /settings attached. Relative links keep the public host; hardcoded http://localhost:3000/settings links do not.",
   },
   {
     id: "lifetime",
@@ -211,7 +211,7 @@ export default function App() {
               <span className="block">Public URL</span>
             </h1>
             <p className="max-w-[58ch] text-pretty text-lg text-ink/68 sm:text-base">
-              TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /share or /review stay attached.
+              TunnelBar lives in your menu bar. Paste a localhost URL, start a temporary public tunnel, and get the shareable URL copied back. Routes like /settings stay attached.
             </p>
           </div>
 
