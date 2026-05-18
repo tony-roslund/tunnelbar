@@ -18,6 +18,10 @@ if [[ -z "$SIGN_IDENTITY" ]]; then
   exit 1
 fi
 
+if [[ -d "$APP_DIR/Contents/Frameworks/Sparkle.framework" ]]; then
+  codesign --force --deep --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
+fi
+
 codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP_DIR/Contents/Resources/cloudflared-arm64"
 codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP_DIR/Contents/Resources/cloudflared-amd64"
 codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$APP_DIR"

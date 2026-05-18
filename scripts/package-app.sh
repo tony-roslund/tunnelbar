@@ -6,18 +6,29 @@ APP_DIR="$ROOT_DIR/.build/TunnelBar.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-VERSION="${VERSION:-0.1.1}"
-BUILD_NUMBER="${BUILD_NUMBER:-2}"
+FRAMEWORKS_DIR="$CONTENTS_DIR/Frameworks"
+VERSION="${VERSION:-0.1.2}"
+BUILD_NUMBER="${BUILD_NUMBER:-3}"
+SPARKLE_FRAMEWORK_SRC="$ROOT_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
 
-swift build -c release --package-path "$ROOT_DIR"
+swift build -c release --arch arm64 --arch x86_64 --package-path "$ROOT_DIR"
 swift "$ROOT_DIR/scripts/generate-app-icon.swift"
 "$ROOT_DIR/scripts/verify-cloudflared.sh"
 
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$FRAMEWORKS_DIR"
 
-cp "$ROOT_DIR/.build/release/TunnelBar" "$MACOS_DIR/TunnelBar"
+cp "$ROOT_DIR/.build/apple/Products/Release/TunnelBar" "$MACOS_DIR/TunnelBar"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$MACOS_DIR/TunnelBar" 2>/dev/null || true
 cp "$ROOT_DIR/Assets/TunnelBarIcon.icns" "$RESOURCES_DIR/TunnelBarIcon.icns"
+
+if [[ ! -d "$SPARKLE_FRAMEWORK_SRC" ]]; then
+  echo "Missing Sparkle framework: $SPARKLE_FRAMEWORK_SRC" >&2
+  echo "Run swift package resolve first." >&2
+  exit 1
+fi
+
+ditto "$SPARKLE_FRAMEWORK_SRC" "$FRAMEWORKS_DIR/Sparkle.framework"
 
 cp "$ROOT_DIR/Vendor/cloudflared-arm64" "$RESOURCES_DIR/cloudflared-arm64"
 chmod 755 "$RESOURCES_DIR/cloudflared-arm64"
@@ -52,6 +63,14 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <true/>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUAutomaticallyUpdate</key>
+  <true/>
+  <key>SUFeedURL</key>
+  <string>https://tunnelbar.dev/appcast.xml</string>
+  <key>SUPublicEDKey</key>
+  <string>xYTSaiVK9ZMuZ0ic0rUDKwdJJaIrPExF/dLbzbtbA+4=</string>
 </dict>
 </plist>
 PLIST

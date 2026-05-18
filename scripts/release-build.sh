@@ -22,3 +22,5 @@ if [[ -n "${NOTARYTOOL_PROFILE:-}" || ( -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_I
 else
   echo "Skipping notarization because notary credentials are not set."
 fi
+
+"$ROOT_DIR/scripts/generate-appcast.sh"

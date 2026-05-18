@@ -67,7 +67,7 @@ Packaging verifies vendored `cloudflared` checksums before creating `.build/Tunn
 scripts/release-build.sh
 ```
 
-By default this packages the app and creates `.build/TunnelBar-0.1.1.dmg`. It skips signing and notarization unless credentials are configured.
+By default this packages the app and creates `.build/TunnelBar-0.1.2.dmg`. It skips signing and notarization unless credentials are configured.
 
 For a Developer ID release:
 

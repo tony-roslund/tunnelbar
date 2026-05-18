@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popoverSizeCancellable: AnyCancellable?
     private var windowWillCloseObserver: NSObjectProtocol?
     private var didRunInteractiveProcessCleanup = false
+    private let appUpdater = AppUpdater.shared
 
     override init() {
         StartupCleanupState.terminatedCloudflaredProcessIDs = CloudflaredProcessCleaner

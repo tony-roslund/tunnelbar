@@ -35,6 +35,27 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("Updates")
+                        .font(.system(.headline, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(TBTheme.primaryText)
+
+                    Button {
+                        AppUpdater.shared.checkForUpdates()
+                    } label: {
+                        Text("Check for Updates")
+                            .font(.system(.body, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(TBTheme.background)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(TBTheme.accent)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Privacy")
                         .font(.system(.headline, design: .monospaced).weight(.semibold))
                         .foregroundStyle(TBTheme.primaryText)

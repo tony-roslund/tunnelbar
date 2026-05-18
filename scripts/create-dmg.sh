@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${APP_DIR:-$ROOT_DIR/.build/TunnelBar.app}"
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.1.2}"
 STAGING_DIR="$ROOT_DIR/.build/dmg"
 DMG_PATH="${DMG_PATH:-$ROOT_DIR/.build/TunnelBar-$VERSION.dmg}"
 
