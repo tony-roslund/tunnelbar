@@ -77,12 +77,12 @@ enum CloudflaredProcessCleaner {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return []
         }
 
         let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         guard let output = String(data: data, encoding: .utf8) else {
             return []
         }

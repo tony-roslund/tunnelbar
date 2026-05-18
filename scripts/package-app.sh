@@ -6,6 +6,8 @@ APP_DIR="$ROOT_DIR/.build/TunnelBar.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+VERSION="${VERSION:-0.1.1}"
+BUILD_NUMBER="${BUILD_NUMBER:-2}"
 
 swift build -c release --package-path "$ROOT_DIR"
 swift "$ROOT_DIR/scripts/generate-app-icon.swift"
@@ -25,7 +27,7 @@ chmod 755 "$RESOURCES_DIR/cloudflared-amd64"
 
 cp "$ROOT_DIR/Vendor/cloudflared-release.txt" "$RESOURCES_DIR/cloudflared-release.txt"
 
-cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
+cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -41,9 +43,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>${VERSION}</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>${BUILD_NUMBER}</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSUIElement</key>
