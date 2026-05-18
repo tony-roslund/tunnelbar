@@ -23,6 +23,11 @@ struct SettingsView: View {
                         )
 
                         SettingsToggleRow(
+                            title: "Start TunnelBar at Login",
+                            isOn: $settings.launchAtLogin
+                        )
+
+                        SettingsToggleRow(
                             title: "Copy public URL automatically",
                             isOn: $settings.copyPublicURLAutomatically
                         )
@@ -31,6 +36,13 @@ struct SettingsView: View {
                             title: "Open Diagnostics by default",
                             isOn: $settings.openDiagnosticsByDefault
                         )
+                    }
+
+                    if let statusMessage = settings.launchAtLoginStatusMessage {
+                        Text(statusMessage)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(TBTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -71,6 +83,9 @@ struct SettingsView: View {
         .frame(width: 430)
         .foregroundStyle(TBTheme.primaryText)
         .preferredColorScheme(.dark)
+        .onAppear {
+            settings.refreshLaunchAtLoginStatus()
+        }
     }
 }
 
