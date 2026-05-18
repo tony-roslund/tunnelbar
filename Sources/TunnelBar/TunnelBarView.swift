@@ -339,20 +339,7 @@ private struct PulsingStatusDot: View {
 
 struct TerminalBrandMark: View {
     var body: some View {
-        HStack(alignment: .center, spacing: 3) {
-            Text("% tunnelbar")
-
-            TimelineView(.periodic(from: .now, by: 0.45)) { context in
-                let isVisible = Int(context.date.timeIntervalSinceReferenceDate / 0.45).isMultiple(of: 2)
-
-                Rectangle()
-                    .fill(TBTheme.accent)
-                    .frame(width: 8, height: 18)
-                    .opacity(isVisible ? 1 : 0)
-                    .offset(y: 1)
-            }
-            .frame(width: 8, height: 18)
-        }
+        Text("% tunnelbar")
         .font(.system(.title3, design: .monospaced).weight(.semibold))
         .foregroundStyle(TBTheme.accent)
     }
@@ -424,7 +411,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.9"
+            "Version 0.1.10"
         }
     }
 }
