@@ -25,8 +25,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsCancellable: AnyCancellable?
     private var popoverSizeCancellable: AnyCancellable?
     private var windowWillCloseObserver: NSObjectProtocol?
+    private var didRunInteractiveProcessCleanup = false
+
+    override init() {
+        StartupCleanupState.terminatedCloudflaredProcessIDs = CloudflaredProcessCleaner
+            .terminateOrphanedBundledProcesses()
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        tunnelManager.recordOrphanedCloudflaredProcessesCleanedUpOnStartup(
+            StartupCleanupState.terminatedCloudflaredProcessIDs
+        )
         applyActivationPolicy(showDockIcon: settings.showDockIcon)
         settingsCancellable = settings.$showDockIcon
             .removeDuplicates()
@@ -88,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        tunnelManager.stopAll()
+        tunnelManager.terminateAllForAppShutdown()
     }
 
     @objc
@@ -96,9 +106,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
+            cleanupOrphanedCloudflaredProcessesIfNeeded()
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    private func cleanupOrphanedCloudflaredProcessesIfNeeded() {
+        guard !didRunInteractiveProcessCleanup else {
+            return
+        }
+
+        didRunInteractiveProcessCleanup = true
+        tunnelManager.cleanupOrphanedCloudflaredProcessesNow()
     }
 
     private func applyActivationPolicy(showDockIcon: Bool) {
@@ -139,4 +159,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover.contentSize = nextSize
     }
+}
+
+@MainActor
+private enum StartupCleanupState {
+    static var terminatedCloudflaredProcessIDs: [Int32] = []
 }

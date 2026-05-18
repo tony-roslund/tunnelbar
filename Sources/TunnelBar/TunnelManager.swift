@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Network
 
@@ -59,6 +60,25 @@ final class TunnelManager: ObservableObject {
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
+    }
+
+    func recordOrphanedCloudflaredProcessesCleanedUpOnStartup(_ terminatedProcessIDs: [Int32]) {
+        guard !terminatedProcessIDs.isEmpty else {
+            return
+        }
+
+        appendLog(
+            "Stopped stale bundled cloudflared process"
+                + (terminatedProcessIDs.count == 1 ? "" : "es")
+                + ": "
+                + terminatedProcessIDs.map(String.init).joined(separator: ", ")
+        )
+    }
+
+    func cleanupOrphanedCloudflaredProcessesNow() {
+        recordOrphanedCloudflaredProcessesCleanedUpOnStartup(
+            CloudflaredProcessCleaner.terminateOrphanedBundledProcesses()
+        )
     }
 
     func start(
@@ -251,6 +271,38 @@ final class TunnelManager: ObservableObject {
         for id in ids {
             stop(id)
         }
+    }
+
+    func terminateAllForAppShutdown() {
+        let activeContexts = Array(contexts.values)
+
+        guard !activeContexts.isEmpty else {
+            return
+        }
+
+        for context in activeContexts {
+            context.outputPipe.fileHandleForReading.readabilityHandler = nil
+            context.errorPipe.fileHandleForReading.readabilityHandler = nil
+            context.startupTask?.cancel()
+
+            guard context.process.isRunning else {
+                continue
+            }
+
+            appendLog("Stopping tunnel for \(context.mapping.origin.absoluteString)")
+            context.process.terminate()
+        }
+
+        let deadline = Date().addingTimeInterval(1)
+        while activeContexts.contains(where: { $0.process.isRunning }) && Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+        }
+
+        for context in activeContexts where context.process.isRunning {
+            Darwin.kill(context.process.processIdentifier, SIGKILL)
+        }
+
+        contexts.removeAll()
     }
 
     func copyPublicURL(for tunnelID: UUID) {
