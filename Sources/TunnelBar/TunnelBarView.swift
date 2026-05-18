@@ -104,6 +104,7 @@ struct TunnelBarView: View {
             if let matchingRunningTunnel {
                 tunnelManager.stop(matchingRunningTunnel.id)
             } else {
+                NSApp.keyWindow?.makeFirstResponder(nil)
                 tunnelManager.start(rawLocalURL: localURL)
             }
         } label: {
@@ -372,7 +373,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.6"
+            "Version 0.1.7"
         }
     }
 }
@@ -426,7 +427,7 @@ private struct TerminalTunnelLine: View {
                 HStack(alignment: .center, spacing: 0) {
                     TypewriterText(
                         statusTitle,
-                        color: statusColor,
+                        color: TBTheme.primaryText,
                         speedMilliseconds: 20,
                         showsCursor: true,
                         cursorColor: TBTheme.accent
@@ -438,7 +439,7 @@ private struct TerminalTunnelLine: View {
                     .foregroundStyle(statusColor)
             }
         }
-        .font(.system(.caption, design: .monospaced).weight(.semibold))
+        .font(.system(.body, design: .monospaced).weight(.semibold))
         .padding(.vertical, 2)
     }
 
@@ -565,7 +566,7 @@ private struct InlineURLTextField: NSViewRepresentable {
             blue: 0.90,
             alpha: 1
         )
-        textField.insertionPointColor = TBTheme.nsAccent
+        textField.insertionPointColor = .clear
         textField.placeholderAttributedString = NSAttributedString(
             string: placeholder,
             attributes: [
@@ -587,6 +588,8 @@ private struct InlineURLTextField: NSViewRepresentable {
         if textField.stringValue != text {
             textField.stringValue = text
         }
+
+        textField.refreshBlockCursorIfActive()
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
@@ -602,13 +605,18 @@ private struct InlineURLTextField: NSViewRepresentable {
             }
 
             text = textField.stringValue
+
+            if let textField = textField as? CaretAtEndTextField {
+                textField.refreshBlockCursorIfActive()
+            }
         }
     }
 }
 
 private final class CaretAtEndTextField: NSTextField {
     private var didRequestInitialFocus = false
-    var insertionPointColor: NSColor = .textColor
+    private let cursorView = BlockCursorView()
+    var insertionPointColor: NSColor = .clear
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -630,7 +638,13 @@ private final class CaretAtEndTextField: NSTextField {
             self.didRequestInitialFocus = true
             window.makeFirstResponder(self)
             self.moveCaretToEnd()
+            self.configureBlockCursorIfNeeded()
         }
+    }
+
+    override func layout() {
+        super.layout()
+        updateBlockCursorPosition()
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -638,12 +652,20 @@ private final class CaretAtEndTextField: NSTextField {
 
         if didBecomeFirstResponder {
             DispatchQueue.main.async { [weak self] in
+                self?.configureBlockCursorIfNeeded()
                 self?.applyInsertionPointColor()
                 self?.clearFullSelection()
+                self?.showBlockCursor()
             }
         }
 
         return didBecomeFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResignFirstResponder = super.resignFirstResponder()
+        hideBlockCursor()
+        return didResignFirstResponder
     }
 
     override func selectText(_ sender: Any?) {
@@ -651,7 +673,24 @@ private final class CaretAtEndTextField: NSTextField {
 
         DispatchQueue.main.async { [weak self] in
             self?.moveCaretToEnd()
+            self?.showBlockCursor()
         }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.showBlockCursor()
+        }
+    }
+
+    func refreshBlockCursorIfActive() {
+        guard !cursorView.isHidden else {
+            return
+        }
+
+        updateBlockCursorPosition()
     }
 
     private func clearFullSelection() {
@@ -667,6 +706,7 @@ private final class CaretAtEndTextField: NSTextField {
 
     private func moveCaretToEnd() {
         currentEditor()?.selectedRange = NSRange(location: stringValue.count, length: 0)
+        updateBlockCursorPosition()
     }
 
     private func applyInsertionPointColor() {
@@ -675,6 +715,121 @@ private final class CaretAtEndTextField: NSTextField {
         }
 
         editor.insertionPointColor = insertionPointColor
+    }
+
+    private func configureBlockCursorIfNeeded() {
+        let container = blockCursorContainer
+
+        guard cursorView.superview !== container else {
+            return
+        }
+
+        cursorView.removeFromSuperview()
+        cursorView.wantsLayer = true
+        cursorView.isHidden = true
+        container.addSubview(cursorView)
+    }
+
+    private func showBlockCursor() {
+        configureBlockCursorIfNeeded()
+        cursorView.isHidden = false
+        updateBlockCursorPosition()
+    }
+
+    private func hideBlockCursor() {
+        cursorView.isHidden = true
+    }
+
+    private func updateBlockCursorPosition() {
+        guard !cursorView.isHidden else {
+            return
+        }
+
+        configureBlockCursorIfNeeded()
+
+        let cursorSize = NSSize(width: 8, height: 18)
+        let container = blockCursorContainer
+        let x = min(max(caretXPosition(in: container), 0), max(container.bounds.width - cursorSize.width, 0))
+        let y = max((container.bounds.height - cursorSize.height) / 2, 0)
+        cursorView.frame = NSRect(origin: NSPoint(x: x, y: y), size: cursorSize)
+    }
+
+    private var blockCursorContainer: NSView {
+        (currentEditor() as? NSTextView) ?? self
+    }
+
+    private func caretXPosition(in container: NSView) -> CGFloat {
+        guard
+            let editor = currentEditor() as? NSTextView,
+            let window
+        else {
+            return textWidth(for: stringValue)
+        }
+
+        let selectedRange = editor.selectedRange()
+        let screenRect = editor.firstRect(forCharacterRange: NSRange(location: selectedRange.location, length: 0), actualRange: nil)
+        let windowPoint = window.convertPoint(fromScreen: screenRect.origin)
+        let localPoint = container.convert(windowPoint, from: nil)
+        return localPoint.x
+    }
+
+    private func textWidth(for string: String) -> CGFloat {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font ?? NSFont.monospacedSystemFont(ofSize: 15, weight: .semibold),
+        ]
+
+        return NSAttributedString(string: string, attributes: attributes).size().width
+    }
+}
+
+private final class BlockCursorView: NSView {
+    private var blinkTimer: Timer?
+
+    override var isHidden: Bool {
+        didSet {
+            isHidden ? stopBlinking() : startBlinking()
+        }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+
+        if window == nil {
+            stopBlinking()
+        } else if !isHidden {
+            startBlinking()
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+
+        TBTheme.nsAccent.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 1, yRadius: 1).fill()
+    }
+
+    private func startBlinking() {
+        layer?.opacity = 1
+
+        guard blinkTimer == nil else {
+            return
+        }
+
+        blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.85, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.toggleOpacity()
+            }
+        }
+    }
+
+    private func toggleOpacity() {
+        layer?.opacity = layer?.opacity == 1 ? 0 : 1
+    }
+
+    private func stopBlinking() {
+        blinkTimer?.invalidate()
+        blinkTimer = nil
+        layer?.opacity = 0
     }
 }
 

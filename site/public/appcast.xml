@@ -3,12 +3,12 @@
     <channel>
         <title>TunnelBar</title>
         <item>
-            <title>0.1.6</title>
-            <pubDate>Mon, 18 May 2026 17:04:48 -0400</pubDate>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+            <title>0.1.7</title>
+            <pubDate>Mon, 18 May 2026 17:24:08 -0400</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/tony-roslund/tunnelbar/releases/download/v0.1.6/TunnelBar-0.1.6.dmg" length="45346842" type="application/octet-stream" sparkle:edSignature="e55q2F0eMUih0CvRx/EA405l3+A8D6bNoILUj5SpnrNEL+QNCV35CvDIhc9nvV/H9uSOSbul7c72KWYY/SpBCw=="/>
+            <enclosure url="https://github.com/tony-roslund/tunnelbar/releases/download/v0.1.7/TunnelBar-0.1.7.dmg" length="45271086" type="application/octet-stream" sparkle:edSignature="qq7PjT4J/0jLeaKCJH3gOZIeWq/EXbIy6jv6/K2vADIxxDZv4XibceSgKZa2SG1aatBZh60n5WZEgnRO5sz4CA=="/>
         </item>
     </channel>
 </rss>
