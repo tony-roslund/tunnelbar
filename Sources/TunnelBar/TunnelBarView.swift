@@ -371,7 +371,7 @@ private struct AboutTunnelBarView: View {
         case (.some(let version), .none):
             "Version \(version)"
         default:
-            "Version 0.1.3"
+            "Version 0.1.4"
         }
     }
 }

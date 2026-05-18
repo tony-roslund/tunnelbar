@@ -52,10 +52,11 @@ final class TunnelManager: ObservableObject {
 
     private var contexts: [UUID: TunnelProcessContext] = [:]
     private let settings: AppSettings
-    private let startupTimeoutSeconds: UInt64 = 25
+    private let startupTimeoutSeconds: UInt64 = 45
     private let quickTunnelMaxLaunchAttempts = 3
-    private let publicURLReachabilityAttemptSeconds: TimeInterval = 10
-    private let publicURLReachabilityPollSeconds: TimeInterval = 0.75
+    private let publicURLReachabilityAttemptSeconds: TimeInterval = 30
+    private let publicURLReachabilityPollSeconds: TimeInterval = 1
+    private let publicURLReachabilityRequestTimeoutSeconds: TimeInterval = 2
     private let localServerCheckTimeoutSeconds = 1.5
 
     init(settings: AppSettings = .shared) {
@@ -384,7 +385,11 @@ final class TunnelManager: ObservableObject {
                     return
                 }
 
-                if await PublicTunnelReachability.canReach(publicURL, timeoutSeconds: 1) {
+                switch await PublicTunnelReachability.check(
+                    publicURL,
+                    timeoutSeconds: self.publicURLReachabilityRequestTimeoutSeconds
+                ) {
+                case .reachable:
                     self.activateTunnel(
                         tunnelID,
                         publicURL: publicURL,
@@ -392,6 +397,14 @@ final class TunnelManager: ObservableObject {
                         onStarted: onStarted
                     )
                     return
+                case .redirectsToLocalhost(let redirectedURL):
+                    let message = "The public URL redirects back to \(redirectedURL.absoluteString). Update the local app's auth or base URL config to trust the tunnel host."
+                    self.markTunnel(tunnelID, failed: message)
+                    self.appendLog(message)
+                    self.contexts[tunnelID]?.process.terminate()
+                    return
+                case .unreachable:
+                    break
                 }
 
                 try? await Task.sleep(for: .milliseconds(Int(self.publicURLReachabilityPollSeconds * 1000)))
@@ -427,7 +440,7 @@ final class TunnelManager: ObservableObject {
         appendLog("Public URL did not become reachable within \(Int(publicURLReachabilityAttemptSeconds)) seconds: \(publicURL.absoluteString)")
 
         guard context.attempt < quickTunnelMaxLaunchAttempts else {
-            let message = "The tunnel service created a public URL, but it did not become reachable after \(quickTunnelMaxLaunchAttempts) quick attempts. Try again in a moment."
+            let message = "The tunnel service created public URLs, but none became reachable after \(quickTunnelMaxLaunchAttempts) attempts. Try again in a moment."
             markTunnel(tunnelID, failed: message)
             appendLog(message)
             context.process.terminate()
@@ -436,7 +449,7 @@ final class TunnelManager: ObservableObject {
 
         let nextAttempt = context.attempt + 1
         updateTunnel(tunnelID) { tunnel in
-            tunnel.statusDetail = "Retrying tunnel URL \(nextAttempt)/\(quickTunnelMaxLaunchAttempts)"
+            tunnel.statusDetail = "Trying another public URL \(nextAttempt)/\(quickTunnelMaxLaunchAttempts)"
         }
         context.ignoreTermination = true
         context.process.terminate()
@@ -772,12 +785,22 @@ enum LocalServerHealthCheck {
 }
 
 enum PublicTunnelReachability {
+    enum Result: Equatable {
+        case reachable
+        case unreachable
+        case redirectsToLocalhost(URL)
+    }
+
     static func canReach(_ url: URL, timeoutSeconds: TimeInterval) async -> Bool {
+        await check(url, timeoutSeconds: timeoutSeconds) == .reachable
+    }
+
+    static func check(_ url: URL, timeoutSeconds: TimeInterval) async -> Result {
         guard
             let host = url.host(),
             await hasPublicDNSAddress(for: host, timeoutSeconds: timeoutSeconds)
         else {
-            return false
+            return .unreachable
         }
 
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData)
@@ -785,10 +808,23 @@ enum PublicTunnelReachability {
         request.timeoutInterval = timeoutSeconds
 
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            return response is HTTPURLResponse
+            let (_, response) = try await URLSession.tunnelBarNoRedirect.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return .unreachable
+            }
+
+            if
+                (300..<400).contains(httpResponse.statusCode),
+                let location = httpResponse.value(forHTTPHeaderField: "Location"),
+                let redirectedURL = URL(string: location),
+                redirectedURL.isLocalhostURL
+            {
+                return .redirectsToLocalhost(redirectedURL)
+            }
+
+            return .reachable
         } catch {
-            return false
+            return .unreachable
         }
     }
 
@@ -821,6 +857,39 @@ enum PublicTunnelReachability {
         } catch {
             return false
         }
+    }
+}
+
+private extension URL {
+    var isLocalhostURL: Bool {
+        guard let host = host()?.lowercased() else {
+            return false
+        }
+
+        return host == "localhost"
+            || host == "127.0.0.1"
+            || host == "::1"
+            || host.hasSuffix(".localhost")
+    }
+}
+
+private extension URLSession {
+    static let tunnelBarNoRedirect = URLSession(
+        configuration: .ephemeral,
+        delegate: NoRedirectURLSessionDelegate(),
+        delegateQueue: nil
+    )
+}
+
+private final class NoRedirectURLSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }
 
